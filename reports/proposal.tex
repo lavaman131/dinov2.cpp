@@ -64,13 +64,13 @@ We begin with a lightweight backbone based on EfficientNet-B0, enhanced with att
 
 \begin{itemize}
 	\item \textbf{Mixed-Precision Training:} We implement dynamic quantization that maintains full precision for critical parameters while quantizing less sensitive components. This approach is guided by prior work on efficient integer-arithmetic-only inference \cite{jacob2017quantizationtrainingneuralnetworks}.
-	
+
 	\item \textbf{8-bit Matrix Multiplication:} Our model utilizes 8-bit integer matrix multiplication (Int8 MatMul) with calibrated scaling factors to minimize quantization error, reducing memory and computational complexity by approximately 75\% compared to FP32 operations \cite{jacob2017quantizationtrainingneuralnetworks}.
-	
+
 	\item \textbf{Structured Pruning:} To ensure hardware-friendly operations, we apply structured pruning that removes entire channels or filters. Our strategy is informed by recent frameworks for automatic DNN compression \cite{liu2019autocompressautomaticdnnstructured} and discrimination-aware channel pruning techniques \cite{zhuang2019discriminationawarechannelpruningdeep}.
-	
+
 	\item \textbf{Knowledge Distillation:} We train a large teacher model on cloud resources and distill its knowledge into a compact student model. This technique builds on seminal work in knowledge distillation \cite{hinton2015distillingknowledgeneuralnetwork} and recent advances in data-efficient transformer training \cite{touvron2021trainingdataefficientimagetransformers}.
-	
+
 	\item \textbf{Token-Efficient Vision Transformers:} We incorporate token-efficient strategies to further reduce computational overhead. Inspired by \cite{yu2024imageworth32tokens}, our design represents images using only 32 tokens, drastically reducing the input dimensionality. In addition, we integrate token merging techniques as detailed in \cite{bolya2023tokenmergingvitfaster}, which dynamically merge similar tokens during processing, maintaining performance while improving efficiency.
 \end{itemize}
 
@@ -80,13 +80,13 @@ To fully leverage the Snapdragon 8 Elite's capabilities, we propose several hard
 
 \begin{itemize}
 	\item \textbf{Custom Kernels for the Qualcomm AI Engine:} We will develop custom convolutional kernels optimized for the Hexagon DSP and Adreno GPU. This work aligns with recent technical advancements in integrated hardware-software optimization \cite{deepseekai2025deepseekv3technicalreport}.
-	
+
 	\item \textbf{GEMM and Multi-Head Latent Attention (MLA):} In addition to custom kernels, we integrate high-performance General Matrix Multiplication (GEMM) routines alongside novel Multi-head Latent Attention (MLA) mechanisms, as introduced in \cite{deepseekai2025deepseekv3technicalreport}. GEMM optimizations streamline batched computations, while MLA enhances the attention mechanism by leveraging latent representations, thus reducing computational overhead and improving feature extraction.
-	
+
 	\item \textbf{Adaptive Computation:} Early-exit mechanisms will be implemented to dynamically adjust computational resources based on input complexity, ensuring efficient processing for "easy" samples.
-	
+
 	\item \textbf{Memory-Efficient Feature Extraction:} We optimize convolutional layers with in-place operations and specialized memory management techniques to minimize the activation footprint.
-	
+
 	\item \textbf{Sparse Computation:} Our design incorporates activation sparsity-aware computations that skip multiplications with zero or near-zero values, further reducing computational load.
 \end{itemize}
 
@@ -96,19 +96,19 @@ Given the challenge’s focus on varying lighting conditions and artistic styles
 
 \begin{itemize}
 	\item \textbf{Illumination-Invariant Feature Learning:} We integrate a specialized preprocessing module that normalizes lighting conditions while preserving key discriminative features. This module leverages both token-efficient representations and robust feature merging techniques.
-	
+
 	\item \textbf{Data Augmentation Strategy:} A comprehensive augmentation pipeline will simulate diverse lighting conditions and artistic styles during training, enhancing the model’s generalization.
-	
+
 	\item \textbf{Multi-Task Learning:} By jointly learning to classify objects and estimate lighting conditions, our network develops more robust internal representations.
-	
+
 	\item \textbf{Domain Adaptation Techniques:} Adversarial domain adaptation components are incorporated to minimize feature distribution shifts between different lighting and style domains.
 \end{itemize}
 
 Our initial experiments suggest that the combination of these approaches can achieve competitive accuracy while maintaining inference times well below the 10ms threshold specified by the challenge \cite{chen20242023lowpowercomputervision}. The final model is expected to demonstrate a favorable accuracy-to-efficiency ratio as measured by the competition metric:
 
 \begin{equation}
-\label{eq:finalScore}
-	\text{Score} = \frac{\text{Accuracy}}{\max(\text{ExecutionTime}/2, 1\text{ms})}. 
+	\label{eq:finalScore}
+	\text{Score} = \frac{\text{Accuracy}}{\max(\text{ExecutionTime}/2, 1\text{ms})}.
 \end{equation}
 
 
@@ -248,8 +248,6 @@ We will structure our project with the following timeline:
 This proposal outlines our approach to the 2025 IEEE Low-Power Computer Vision Challenge - Track 1, focusing on efficient image classification across diverse lighting conditions and styles. We have proposed a comprehensive solution that combines state-of-the-art model compression techniques, hardware-specific optimizations for the Snapdragon 8 Elite platform, and specialized methods for enhancing robustness to lighting and style variations.
 
 Our strategy leverages 8-bit matrix multiplication, structured pruning, knowledge distillation, and custom optimized kernels to achieve both high accuracy and low inference latency for improving the accessibility of Deep Learning models.
-
-
 
 \printbibliography
 
