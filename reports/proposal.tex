@@ -7,23 +7,23 @@
 								% TeX will automatically convert eps --> pdf in pdflatex		
 \usepackage{amssymb}
 \usepackage{amsmath}
-
+\usepackage{biblatex}
+\addbibresource{citations.bib}
 %SetFonts
 
 %SetFonts
 
 
 \title{Efficient Computer Vision: Pushing the Frontier of Edge Computing}
-\author{Michael Khra, Zach Gentile, and Alex Lavaee}
+\author{Michael Krah, Zach Gentile, and Alex Lavaee}
 \date{March 2, 2025}
 
 \begin{document}
 \maketitle
-
 \begin{abstract}
 	The Low Power Computer Vision Challenge (LPCVC) advances three critical directions in computer vision by focusing on model optimization for edge devices. Leveraging the Qualcomm AI-Hub ecosystem, this competition enables developers to deploy efficient vision models on mobile phones and AI PCs. Participants can submit models in various formats (PyTorch, TensorFlow, TFLite, ONNX), making the challenge globally accessible.
 	Unlike traditional competitions that rely on cloud computing, LPCVC emphasizes practical applications that run directly on edge devices with minimal hardware requirements. This approach democratizes participation for developers, researchers, and students worldwide. The challenge provides open-source sample solutions as qualification benchmarks, with winning solutions and test datasets being publicly released to foster continued innovation in efficient computer vision.
-	In this paper, we propose a solution to the LPCVC challenge that uses a combination of model compression techniques and edge device optimization strategies. Our solution is designed to be lightweight and efficient, and to run directly on edge devices with minimal hardware requirements.
+	In this paper, we propose a solution to the LPCVC challenge that uses a combination of model architecture improvements such as quantization, pruning, token-efficient methods. In addition, we use enhancements to the training pipeline including 8-bit General Matrix Multiplication (GEMM) and Multi-head Latent Attention (MLA). Finally, we propose techniques for edge device optimization. Our solution is designed to be lightweight, efficient, and run directly on edge devices with minimal hardware requirements.
 \end{abstract}
 
 \section*{Introduction}
@@ -40,9 +40,11 @@ By participating in this challenge, we seek to advance the state-of-the-art in e
 
 Efficient computer vision for edge devices has seen significant advancements across several key areas. We organize our literature review around three main themes particularly relevant to the LPCVC challenge:
 
+
+
 \subsection*{Model Compression and Quantization}
 
-Neural network compression has become crucial for deploying deep learning models on resource-constrained devices. Recent work by Han et al. \cite{han2016deep} introduced deep compression, combining pruning, quantization, and Huffman coding to significantly reduce model size while maintaining accuracy. Building on this foundation, Jacob et al. \cite{jacob2018quantization} developed quantization-aware training techniques that allow for 8-bit integer operations without significant accuracy degradation. More recently, Nagel et al. \cite{nagel2021white} demonstrated data-free quantization methods that enable post-training conversion to lower precision formats, making deployment more accessible.
+Neural network compression has become crucial for deploying deep learning models on resource-constrained devices. Work by Han et al. \cite{han2016deep} introduced deep compression, combining pruning, quantization, and Huffman coding to significantly reduce model size while maintaining accuracy. Building on this foundation, Jacob et al. \cite{jacob2018quantization} developed quantization-aware training techniques that allow for 8-bit integer operations without significant accuracy degradation. More recently, Nagel et al. \cite{nagel2021white} demonstrated data-free quantization methods that enable post-training conversion to lower precision formats, making deployment more accessible.
 
 \subsection*{Architectures for Edge Deployment}
 
@@ -52,59 +54,67 @@ Specialized neural network architectures designed explicitly for edge devices ha
 
 Addressing variations in lighting conditions has been a longstanding challenge in computer vision. Histogram equalization and other traditional techniques have been supplemented by learning-based approaches as described by Lore et al. \cite{lore2017llnet} who developed LLNet specifically for low-light image enhancement. For style robustness, Geirhos et al. \cite{geirhos2019imagenet} demonstrated that CNNs are biased toward texture rather than shape and proposed methods to improve generalization across styles. Most recently, Li et al. \cite{li2022domain} introduced adaptive normalization strategies that significantly improve performance across domain shifts including lighting and style variations.
 
-Our work builds upon these foundations while introducing novel optimizations specifically targeted at the Snapdragon 8 Elite hardware platform.
-
 \section*{Proposed Work}
 
-Our solution to the 2025 LPCVC Track 1 challenge draws from state-of-the-art techniques in efficient deep learning while introducing novel optimizations tailored to the Snapdragon 8 Elite hardware. We propose a multi-faceted approach targeting both the algorithmic and hardware acceleration aspects of the problem:
+Our solution to the 2025 LPCVC Track 1 challenge builds on state-of-the-art techniques in efficient deep learning and leverages insights from recent low-power computer vision studies \cite{chen20242023lowpowercomputervision}. Our approach combines algorithmic innovations with hardware-specific optimizations to achieve superior accuracy and speed on the Snapdragon 8 Elite.
 
 \subsection*{Model Architecture and Optimization}
 
-We begin with a lightweight backbone based on EfficientNet-B0, modified with attention mechanisms specifically designed to capture lighting-invariant features. Our approach includes:
+We begin with a lightweight backbone based on EfficientNet-B0, enhanced with attention mechanisms inspired by transformer architectures \cite{dosovitskiy2021imageworth16x16words,touvron2021trainingdataefficientimagetransformers} and efficient mobile designs \cite{pan2022edgevitscompetinglightweightcnns}. Our approach includes:
 
 \begin{itemize}
-	\item \textbf{Mixed-precision Training:} We will implement dynamic quantization through mixed-precision training that allows us to maintain full precision for critical parameters while aggressively quantizing less sensitive components.
-
-	\item \textbf{8-bit Matrix Multiplication:} We will implement 8-bit integer matrix multiplication (Int8 MatMul) operations throughout our model, with calibrated scaling factors to minimize quantization error. This reduces both memory requirements and computational complexity by approximately 75\% compared to FP32 operations.
-
-	\item \textbf{Structured Pruning:} Rather than unstructured pruning that often leads to irregular memory access patterns, we will apply structured pruning that removes entire channels or filters, making the resulting networks hardware-friendly.
-
-	\item \textbf{Knowledge Distillation:} We will train a large "teacher" model on cloud resources and distill its knowledge into our compact "student" model, enabling the smaller network to benefit from the representation capacity of the larger one.
+	\item \textbf{Mixed-Precision Training:} We implement dynamic quantization that maintains full precision for critical parameters while quantizing less sensitive components. This approach is guided by prior work on efficient integer-arithmetic-only inference \cite{jacob2017quantizationtrainingneuralnetworks}.
+	
+	\item \textbf{8-bit Matrix Multiplication:} Our model utilizes 8-bit integer matrix multiplication (Int8 MatMul) with calibrated scaling factors to minimize quantization error, reducing memory and computational complexity by approximately 75\% compared to FP32 operations \cite{jacob2017quantizationtrainingneuralnetworks}.
+	
+	\item \textbf{Structured Pruning:} To ensure hardware-friendly operations, we apply structured pruning that removes entire channels or filters. Our strategy is informed by recent frameworks for automatic DNN compression \cite{liu2019autocompressautomaticdnnstructured} and discrimination-aware channel pruning techniques \cite{zhuang2019discriminationawarechannelpruningdeep}.
+	
+	\item \textbf{Knowledge Distillation:} We train a large teacher model on cloud resources and distill its knowledge into a compact student model. This technique builds on seminal work in knowledge distillation \cite{hinton2015distillingknowledgeneuralnetwork} and recent advances in data-efficient transformer training \cite{touvron2021trainingdataefficientimagetransformers}.
+	
+	\item \textbf{Token-Efficient Vision Transformers:} We incorporate token-efficient strategies to further reduce computational overhead. Inspired by \cite{yu2024imageworth32tokens}, our design represents images using only 32 tokens, drastically reducing the input dimensionality. In addition, we integrate token merging techniques as detailed in \cite{bolya2023tokenmergingvitfaster}, which dynamically merge similar tokens during processing, maintaining performance while improving efficiency.
 \end{itemize}
 
 \subsection*{Hardware-Specific Optimizations}
 
-To fully leverage the Snapdragon 8 Elite's capabilities, we propose:
+To fully leverage the Snapdragon 8 Elite's capabilities, we propose several hardware-specific enhancements:
 
 \begin{itemize}
-	\item \textbf{Custom Kernels for the Qualcomm AI Engine:} We will develop optimized implementation of convolutional operations specifically tuned for the Hexagon DSP and Adreno GPU within the Snapdragon platform, ensuring efficient parallelization and memory access patterns.
-
-	\item \textbf{Adaptive Computation:} We will implement early-exit mechanisms that allow the network to terminate inference early for "easy" samples, dynamically adjusting computational resources based on image complexity.
-
-	\item \textbf{Memory-Efficient Feature Extraction:} For our convolutional layers, we will implement in-place operations wherever possible and utilize specialized memory management techniques to minimize the activation memory footprint.
-
-	\item \textbf{Sparse Computation:} We will develop activation sparsity-aware computations that skip multiplications with zero or near-zero values, which are common in ReLU-based networks.
+	\item \textbf{Custom Kernels for the Qualcomm AI Engine:} We will develop custom convolutional kernels optimized for the Hexagon DSP and Adreno GPU. This work aligns with recent technical advancements in integrated hardware-software optimization \cite{deepseekai2025deepseekv3technicalreport}.
+	
+	\item \textbf{GEMM and Multi-Head Latent Attention (MLA):} In addition to custom kernels, we integrate high-performance General Matrix Multiplication (GEMM) routines alongside novel Multi-head Latent Attention (MLA) mechanisms, as introduced in \cite{deepseekai2025deepseekv3technicalreport}. GEMM optimizations streamline batched computations, while MLA enhances the attention mechanism by leveraging latent representations, thus reducing computational overhead and improving feature extraction.
+	
+	\item \textbf{Adaptive Computation:} Early-exit mechanisms will be implemented to dynamically adjust computational resources based on input complexity, ensuring efficient processing for "easy" samples.
+	
+	\item \textbf{Memory-Efficient Feature Extraction:} We optimize convolutional layers with in-place operations and specialized memory management techniques to minimize the activation footprint.
+	
+	\item \textbf{Sparse Computation:} Our design incorporates activation sparsity-aware computations that skip multiplications with zero or near-zero values, further reducing computational load.
 \end{itemize}
 
 \subsection*{Robustness to Lighting and Style Variations}
 
-The challenge specifically focuses on performance across lighting conditions and styles. We propose:
+Given the challenge’s focus on varying lighting conditions and artistic styles, our approach emphasizes robust feature learning:
 
 \begin{itemize}
-	\item \textbf{Illumination-Invariant Feature Learning:} We will integrate a specialized preprocessing module that learns to normalize lighting conditions while preserving discriminative features.
-
-	\item \textbf{Data Augmentation Strategy:} We will develop a comprehensive augmentation pipeline that simulates diverse lighting conditions and artistic styles during training.
-
-	\item \textbf{Multi-Task Learning:} By jointly learning to classify objects and estimate lighting conditions, our model will develop more robust internal representations.
-
-	\item \textbf{Domain Adaptation Techniques:} We will incorporate adversarial domain adaptation components to minimize the feature distribution shift between different lighting conditions and styles.
+	\item \textbf{Illumination-Invariant Feature Learning:} We integrate a specialized preprocessing module that normalizes lighting conditions while preserving key discriminative features. This module leverages both token-efficient representations and robust feature merging techniques.
+	
+	\item \textbf{Data Augmentation Strategy:} A comprehensive augmentation pipeline will simulate diverse lighting conditions and artistic styles during training, enhancing the model’s generalization.
+	
+	\item \textbf{Multi-Task Learning:} By jointly learning to classify objects and estimate lighting conditions, our network develops more robust internal representations.
+	
+	\item \textbf{Domain Adaptation Techniques:} Adversarial domain adaptation components are incorporated to minimize feature distribution shifts between different lighting and style domains.
 \end{itemize}
 
-Our initial experiments suggest that the combination of these approaches can achieve competitive accuracy while maintaining inference time well below the 10ms threshold specified in the challenge requirements. We anticipate that our final model will demonstrate a favorable accuracy-to-efficiency ratio as measured by the competition metric:
+Our initial experiments suggest that the combination of these approaches can achieve competitive accuracy while maintaining inference times well below the 10ms threshold specified by the challenge \cite{chen20242023lowpowercomputervision}. The final model is expected to demonstrate a favorable accuracy-to-efficiency ratio as measured by the competition metric:
 
-\begin{align*}
-	\text{Score} = \frac{\text{Accuracy}}{\max(\text{ExecutionTime}/2, 1ms)}.
-\end{align*}
+\begin{equation}
+\label{eq:finalScore}
+	\text{Score} = \frac{\text{Accuracy}}{\max(\text{ExecutionTime}/2, 1\text{ms})}. 
+\end{equation}
+
+
+This design not only meets the stringent requirements of the LPCVC challenge but also aligns with recent advancements in efficient deep learning and hardware-aware model design \cite{deepseekai2025deepseekv3technicalreport}.
+
+
 
 
 \section*{Datasets}
@@ -163,7 +173,7 @@ In accordance with the challenge requirements, our primary evaluation metrics ar
 
 	\item \textbf{Classification Accuracy:} The percentage of correctly classified images across all 64 classes in the test dataset, with special attention to performance across different lighting conditions and styles.
 
-	\item \textbf{Final Score:} The competition's official scoring formula of Accuracy / max(ExecutionTime/2, 1ms), which balances accuracy against computational efficiency.
+	\item \textbf{Final Score:} The competition's official scoring formula of accuracy, as described in equation \ref{eq:finalScore}, which balances accuracy against computational efficiency.
 \end{itemize}
 
 \subsection*{Development Evaluation Strategy}
@@ -171,9 +181,8 @@ In accordance with the challenge requirements, our primary evaluation metrics ar
 During the development process, we will implement a more comprehensive evaluation approach:
 
 \begin{itemize}
-	\item \textbf{Cross-Validation:} We will use k-fold cross-validation on our training data to ensure robust performance estimates.
 
-	\item \textbf{Stratified Evaluation:} We will measure performance separately on subsets of the data representing different lighting conditions and styles to identify potential weaknesses.
+	\item \textbf{Validation Set Evaluation:} We will measure performance on the validation set representing different lighting conditions and styles to identify potential weaknesses.
 
 	\item \textbf{Confusion Matrix Analysis:} We will analyze the confusion matrix to identify frequently misclassified class pairs and target these specifically in our model refinement.
 
@@ -191,10 +200,8 @@ We will establish the following baselines for comparison:
 
 	\item \textbf{EfficientNet-B0:} As we build upon this architecture, we will track improvements over the original implementation.
 
-	\item \textbf{State-of-the-Art Models:} We will compare against recent published results on similar tasks, adjusted for the same hardware constraints.
 \end{itemize}
 
-Our goal is to exceed the sample solution's performance by at least 15% in terms of the final score, while maintaining an execution time below 5ms to provide a comfortable margin below the competition threshold.
 
 \section*{Timeline}
 
@@ -240,62 +247,10 @@ We will structure our project with the following timeline:
 
 This proposal outlines our approach to the 2025 IEEE Low-Power Computer Vision Challenge - Track 1, focusing on efficient image classification across diverse lighting conditions and styles. We have proposed a comprehensive solution that combines state-of-the-art model compression techniques, hardware-specific optimizations for the Snapdragon 8 Elite platform, and specialized methods for enhancing robustness to lighting and style variations.
 
-Our strategy leverages 8-bit matrix multiplication, structured pruning, knowledge distillation, and custom optimized kernels to achieve both high accuracy and low inference latency. We aim to not only meet the competition's requirements but to push the frontier of what's possible in edge-based computer vision, developing techniques that can be broadly applicable to real-world deployment scenarios.
+Our strategy leverages 8-bit matrix multiplication, structured pruning, knowledge distillation, and custom optimized kernels to achieve both high accuracy and low inference latency for improving the accessibility of Deep Learning models.
 
-The outlined timeline provides a structured approach to development, with clear milestones to ensure progress toward our final submission. By participating in this challenge, we hope to contribute valuable insights to the field of efficient computer vision and demonstrate the potential for sophisticated visual understanding on resource-constrained devices.
 
-\begin{thebibliography}{9}
 
-	\bibitem{han2016deep}
-	Song Han, Huizi Mao, and William J. Dally.
-	\textit{Deep Compression: Compressing Deep Neural Networks with Pruning, Trained Quantization and Huffman Coding}.
-	ICLR, 2016.
-
-	\bibitem{jacob2018quantization}
-	Benoit Jacob, Skirmantas Kligys, Bo Chen, Menglong Zhu, Matthew Tang, Andrew Howard, Hartwig Adam, and Dmitry Kalenichenko.
-	\textit{Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference}.
-	CVPR, 2018.
-
-	\bibitem{nagel2021white}
-	Markus Nagel, Mart van Baalen, Tijmen Blankevoort, and Max Welling.
-	\textit{Data-Free Quantization Through Weight Equalization and Bias Correction}.
-	ICCV, 2021.
-
-	\bibitem{sandler2018mobilenetv2}
-	Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zhmoginov, and Liang-Chieh Chen.
-	\textit{MobileNetV2: Inverted Residuals and Linear Bottlenecks}.
-	CVPR, 2018.
-
-	\bibitem{howard2019searching}
-	Andrew Howard, Mark Sandler, Grace Chu, Liang-Chieh Chen, Bo Chen, Mingxing Tan, Weijun Wang, Yukun Zhu, Ruoming Pang, Vijay Vasudevan, Quoc V. Le, and Hartwig Adam.
-	\textit{Searching for MobileNetV3}.
-	ICCV, 2019.
-
-	\bibitem{tan2019efficientnet}
-	Mingxing Tan and Quoc V. Le.
-	\textit{EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks}.
-	ICML, 2019.
-
-	\bibitem{lin2021mcunet}
-	Ji Lin, Wei-Ming Chen, Yujun Lin, John Cohn, Chuang Gan, and Song Han.
-	\textit{MCUNet: Tiny Deep Learning on IoT Devices}.
-	NeurIPS, 2021.
-
-	\bibitem{lore2017llnet}
-	Kin Gwn Lore, Adedotun Akintayo, and Soumik Sarkar.
-	\textit{LLNet: A Deep Autoencoder Approach to Natural Low-light Image Enhancement}.
-	Pattern Recognition, 2017.
-
-	\bibitem{geirhos2019imagenet}
-	Robert Geirhos, Patricia Rubisch, Claudio Michaelis, Matthias Bethge, Felix A. Wichmann, and Wieland Brendel.
-	\textit{ImageNet-trained CNNs are biased towards texture; increasing shape bias improves accuracy and robustness}.
-	ICLR, 2019.
-
-	\bibitem{li2022domain}
-	Da Li, Yongxin Yang, Yi-Zhe Song, and Timothy M. Hospedales.
-	\textit{Deeper, Broader and Artier Domain Generalization}.
-	IJCV, 2022.
-
-\end{thebibliography}
+\printbibliography
 
 \end{document}
