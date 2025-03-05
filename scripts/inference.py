@@ -1,3 +1,4 @@
+from pathlib import Path
 import torch
 from torchvision import models
 import torch.nn as nn
@@ -8,6 +9,10 @@ from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 from PIL import Image
 import torch.nn.functional as F
 from efficient_cv.data import COCO_LPCV_CLASSES
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from tqdm.auto import tqdm
+
+from efficient_cv.evaluate.metrics import calculate_accuracy
 
 
 # Custom wrapper class for preprocessing and MobileNetV2
@@ -27,7 +32,7 @@ class PreprocessedMobileNetV2(nn.Module):
                 v2.Resize((224, 224)),
                 v2.ToImage(),
                 v2.ToDtype(torch.float32, scale=True),
-                v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                v2.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD),
             ]
         )
 
@@ -43,6 +48,7 @@ class PreprocessedMobileNetV2(nn.Module):
 num_classes = 64
 
 pretrained_path = "./models/mobilenet_v2_coco.pth"  # Replace with your .pth file path
+ground_truth_path = "./data/labels/key.csv"
 
 # Create the model
 model = PreprocessedMobileNetV2(
@@ -52,12 +58,24 @@ model = PreprocessedMobileNetV2(
 # Inference
 model.eval()
 
-# Trace model
-input_shape: Tuple[int, ...] = (1, 3, 224, 224)
-img = Image.open("./data/handbag_indoor_lowlight_02.jpg")
+
+outputs = []
+fnames = []
+
+image_paths = list(Path("./data/images").iterdir())
 
 with torch.inference_mode():
-    output = model(img)
-    probs = F.softmax(output, dim=-1)
-    pred = torch.argmax(probs, dim=-1)
-    print(COCO_LPCV_CLASSES[pred])
+    for img_path in tqdm(image_paths):
+        with Image.open(img_path) as img:
+            img = img.convert("RGB")
+            output = model(img)
+            fnames.append(img_path.name)
+        outputs.append(output)
+
+outputs = torch.cat(outputs, dim=0)
+
+accuracy = calculate_accuracy(
+    outputs=outputs, file_names=fnames, ground_truth_path=ground_truth_path
+)
+
+print(f"Accuracy: {accuracy}")
