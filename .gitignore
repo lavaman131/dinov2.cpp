@@ -175,8 +175,8 @@ cython_debug/
 
 .DS_Store
 
-data/
-models/
+/data
+/models
 
 ## Core latex/pdflatex auxiliary files:
 *.aux

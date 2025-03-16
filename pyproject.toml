@@ -49,6 +49,20 @@ dependencies = [
     "typing_extensions==4.12.2",
     "urllib3==2.2.3",
     "wcwidth==0.2.13",
+    "omegaconf",
+    "transformers",
+    "accelerate",
+    "open_clip_torch",
+    "einops",
+    "scipy",
+    "pillow",
+    "gdown",
+    "huggingface-hub",
+    "einops",
+    "wandb",
+    "torch-fidelity",
+    "torchinfo",
+    "webdataset",
 ]
 
 [tool.uv.sources]
