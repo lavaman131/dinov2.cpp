@@ -30,7 +30,7 @@ def convert_imagenet_to_wds(output_dir, max_train_samples_per_shard, max_val_sam
 
     opat = os.path.join(output_dir, "imagenet-train-%06d.tar")
     output = wds.ShardWriter(opat, maxcount=max_train_samples_per_shard)
-    dataset = load_dataset("imagenet-1k", streaming=True, split="train", use_auth_token=True)
+    dataset = load_dataset("imagenet-1k", streaming=True, split="train", trust_remote_code=True)
     now = time.time()
     for i, example in enumerate(dataset):
         if i % max_train_samples_per_shard == 0:
@@ -43,7 +43,7 @@ def convert_imagenet_to_wds(output_dir, max_train_samples_per_shard, max_val_sam
 
     opat = os.path.join(output_dir, "imagenet-val-%06d.tar")
     output = wds.ShardWriter(opat, maxcount=max_val_samples_per_shard)
-    dataset = load_dataset("imagenet-1k", streaming=True, split="validation", use_auth_token=True)
+    dataset = load_dataset("imagenet-1k", streaming=True, split="validation", trust_remote_code=True)
     now = time.time()
     for i, example in enumerate(dataset):
         if i % max_val_samples_per_shard == 0:

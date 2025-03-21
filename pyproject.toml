@@ -122,6 +122,7 @@ dependencies = [
 "webdataset==0.2.111",
 "xxhash==3.5.0",
 "yarl==1.18.3",
+"hf_transfer==0.1.9"
 ]
 
 [tool.uv.sources]
