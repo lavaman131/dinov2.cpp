@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #$ -P dl4ds
-#$ -l h_rt=24:00:00
+#$ -l h_rt=72:00:00
 #$ -N convert-imagenet-to-webdataset
 #$ -pe omp 4
 #$ -j y # Merge the error and output streams into a single file
