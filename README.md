@@ -5,7 +5,7 @@
 ## Install packages
 
 ```bash
-conda env create -f environment.yml
+conda create -n eff-cv python=3.10
 conda activate eff-cv
 python -m pip install -r requirements.txt
 ```
