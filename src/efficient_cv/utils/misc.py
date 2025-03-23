@@ -9,6 +9,7 @@ from pathlib import Path
 import copy
 import torch
 import torch.distributed as dist
+import torch.amp
 
 TORCH_MAJOR = int(torch.__version__.split(".")[0])
 TORCH_MINOR = int(torch.__version__.split(".")[1])
@@ -268,7 +269,7 @@ def init_distributed_mode(args):
         world_size=args.world_size,
         rank=args.rank,
     )
-    torch.distributed.barrier()
+    torch.distributed.barrier(device_ids=[args.gpu])
     setup_for_distributed(args.rank == 0)
 
 
@@ -276,7 +277,7 @@ class NativeScalerWithGradNormCount:
     state_dict_key = "amp_scaler"
 
     def __init__(self):
-        self._scaler = torch.cuda.amp.GradScaler()
+        self._scaler = torch.amp.GradScaler(device="cuda")
 
     def __call__(
         self,

@@ -124,6 +124,7 @@ def convert_json_to_jsonl(input_pattern, output_file):
 
 @torch.no_grad()
 def main(args):
+    NUM_IMAGENET_TRAIN_SAMPLES = 1_281_167
     os.makedirs(args.cached_path, exist_ok=True)
     misc.init_distributed_mode(args)
 
@@ -180,7 +181,7 @@ def main(args):
     dataset_train = wds.WebDataset(
         train_pattern,
         resampled=True,
-        shardshuffle=True,
+        shardshuffle=False,
         cache_dir=args.cached_path,
         nodesplitter=wds.split_by_node,
     )
@@ -193,7 +194,7 @@ def main(args):
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
         drop_last=False,
-    )
+    ).with_epoch(NUM_IMAGENET_TRAIN_SAMPLES)
 
     if global_rank == 0:
         from huggingface_hub import hf_hub_download
@@ -215,7 +216,8 @@ def main(args):
 
     print(f"Start caching latents, {args.rank}, {args.gpu}")
     start_time = time.time()
-    for samples, target in tqdm(data_loader_train):
+    for idx, (samples, target) in enumerate(data_loader_train):
+        print(idx)
         samples = samples.to(device, non_blocking=True)
 
         if args.ten_crop:
@@ -237,7 +239,11 @@ def main(args):
 
         if misc.is_dist_avail_and_initialized():
             torch.cuda.synchronize()
-    print(f"{args.rank} proccessed {len(processed)} samples")
+
+        if idx % 1000 == 0:
+            print(f"{args.rank} processed {len(processed)} samples")
+
+    print(f"{args.rank} processed {len(processed)} samples")
     target_json_path = f"{args.cached_path}/pretokenized_{args.rank}"
     target_json_path = target_json_path + ".json"
     with open(target_json_path, "w") as json_f:

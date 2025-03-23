@@ -24,7 +24,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 
 # from modeling.diffusion import create_diffusion
 from ..models.layers.blocks import SimpleMLPAdaLN
@@ -144,7 +144,7 @@ class ReconstructionLoss_Stage2(torch.nn.Module):
 
         self.config = config
 
-    @autocast(enabled=False)
+    @autocast(device_type="cuda", enabled=False)
     def forward(
         self,
         inputs: torch.Tensor,
