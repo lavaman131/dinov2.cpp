@@ -217,7 +217,6 @@ def main(args):
     print(f"Start caching latents, {args.rank}, {args.gpu}")
     start_time = time.time()
     for idx, (samples, target) in enumerate(data_loader_train):
-        print(idx)
         samples = samples.to(device, non_blocking=True)
 
         if args.ten_crop:
@@ -240,6 +239,9 @@ def main(args):
         if misc.is_dist_avail_and_initialized():
             torch.cuda.synchronize()
 
+        if idx % 1000 == 0:
+            print(f"{args.rank} processed {len(processed)} batches")
+
     print(f"{args.rank} processed {len(processed)} samples")
     target_json_path = f"{args.cached_path}/pretokenized_{args.rank}"
     target_json_path = target_json_path + ".json"
@@ -257,6 +259,7 @@ def main(args):
 
     if misc.is_dist_avail_and_initialized():
         torch.cuda.synchronize()
+        torch.distributed.destroy_process_group()
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
