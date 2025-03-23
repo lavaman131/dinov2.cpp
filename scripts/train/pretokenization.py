@@ -15,6 +15,14 @@ torchrun --nproc_per_node=8 --nnodes=1 --node_rank=0 --rdzv-endpoint=localhost:9
     --ten_crop \
     --data_path ${PATH_TO_IMAGENET} --cached_path ${PATH_TO_SAVE_JSONL}
 """
+
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import webdataset as wds
+
+
 import builtins
 import argparse
 import datetime
@@ -22,7 +30,6 @@ import numpy as np
 from PIL import Image
 import torch.distributed as dist
 
-import os
 import time
 from pathlib import Path
 
@@ -151,34 +158,40 @@ def main(args):
         crop_size = int(args.img_size * 1.1)
         transform_train = transforms.Compose([
             transforms.Lambda(lambda pil_image: center_crop_arr(pil_image, crop_size)),
-            transforms.TenCrop(args.img_size), # this is a tuple of PIL Images
-            transforms.Lambda(lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops])), # returns a 4D tensor
+            transforms.TenCrop(args.img_size),  # returns a tuple of PIL Images
+            transforms.Lambda(lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops])),
         ])
     else:
         # augmentation following DiT and ADM
         transform_train = transforms.Compose([
             transforms.Lambda(lambda pil_image: center_crop_arr(pil_image, args.img_size)),
-            # transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            # MaskGIT-VQ expects input in range of [0, 1]
-            # transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
         ])
 
-    dataset_train = ImageFolderWithFilename(os.path.join(args.data_path, 'train'), transform=transform_train)
-    print(dataset_train)
-
-    sampler_train = torch.utils.data.DistributedSampler(
-        dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=False,
+    # Expecting the PATH_TO_IMAGENET directory to contain tar shards (e.g., shard000.tar, shard001.tar, …)
+    train_pattern = os.path.join(args.data_path, '*.tar')
+    dataset_train = (
+        wds.WebDataset(train_pattern)
+        .shuffle(1000)
+        .decode("pil")
+        .to_tuple("jpg", "cls", "__key__")  # "jpg": image, "cls": class label, "__key__": identifier
+        .map_tuple(
+            transform_train,
+            lambda label: int(label.strip()) if isinstance(label, str) else int(label),
+            lambda key: key
+        )
     )
-    print("Sampler_train = %s" % str(sampler_train))
+    print("Dataset (webdataset) loaded from:", train_pattern)
 
+    # For webdataset (an iterable dataset), we remove DistributedSampler.
     data_loader_train = torch.utils.data.DataLoader(
-        dataset_train, sampler=sampler_train,
+        dataset_train,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
-        drop_last=False,  # Don't drop in cache
+        drop_last=False,
     )
+
     if global_rank == 0:
         from huggingface_hub import hf_hub_download
         hf_hub_download(
@@ -195,7 +208,7 @@ def main(args):
     processed = []
 
 
-    print(f"Start caching latents, {args.rank}, {args.gpu}")
+    print(f"Start caching latents, global rank: {global_rank}")
     start_time = time.time()
     for samples, target, paths in tqdm(data_loader_train):
         samples = samples.to(device, non_blocking=True)
@@ -217,8 +230,8 @@ def main(args):
         
         if misc.is_dist_avail_and_initialized():
             torch.cuda.synchronize()
-    print(f"{args.rank} proccessed {len(processed)} samples")
-    target_json_path = f"{args.cached_path}/pretokenized_{args.rank}"
+    print(f"{global_rank} proccessed {len(processed)} samples")
+    target_json_path = f"{args.cached_path}/pretokenized_{global_rank}.json"
     target_json_path = target_json_path + ".json"
     with open(target_json_path, "w") as json_f:
         json.dump(processed, json_f)
