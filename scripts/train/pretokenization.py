@@ -240,9 +240,6 @@ def main(args):
         if misc.is_dist_avail_and_initialized():
             torch.cuda.synchronize()
 
-        if idx % 1000 == 0:
-            print(f"{args.rank} processed {len(processed)} samples")
-
     print(f"{args.rank} processed {len(processed)} samples")
     target_json_path = f"{args.cached_path}/pretokenized_{args.rank}"
     target_json_path = target_json_path + ".json"
