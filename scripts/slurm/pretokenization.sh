@@ -9,7 +9,7 @@
 
 module load cmake ffmpeg gcc/10.2.0 llvm/9.0.1 miniconda openmpi cuda/12.2
 
-conda activate eff-cv
+conda activate titok-pretokenization
 
 # Keep track of information related to the current job
 echo "=========================================================="
@@ -22,4 +22,4 @@ echo "=========================================================="
 INPUT_DIR=/projectnb/dl4ds/materials/datasets/imagenet
 OUTPUT_DIR=/projectnb/dl4ds/materials/datasets/imagenet-tokenized
  
-python ../train/pretokenization.py --cached_path $OUTPUT_DIR --data_path $INPUT_DIR
+python ./scripts/pretokenization.py --cached_path $OUTPUT_DIR --data_path $INPUT_DIR
