@@ -22,7 +22,7 @@ import datetime
 import numpy as np
 from PIL import Image
 import torch.distributed as dist
-
+import webdataset as wds
 import os
 import time
 from pathlib import Path
@@ -34,7 +34,7 @@ import torchvision.datasets as datasets
 
 from efficient_cv.utils.train import PretrainedTokenizer
 import efficient_cv.utils.misc as misc
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import json
 import glob
 
@@ -46,12 +46,13 @@ def center_crop_arr(pil_image, image_size):
     """
     while min(*pil_image.size) >= 2 * image_size:
         pil_image = pil_image.resize(
-            tuple(x // 2 for x in pil_image.size), resample=Image.BOX
+            tuple(x // 2 for x in pil_image.size), resample=Image.Resampling.BOX
         )
 
     scale = image_size / min(*pil_image.size)
     pil_image = pil_image.resize(
-        tuple(round(x * scale) for x in pil_image.size), resample=Image.BICUBIC
+        tuple(round(x * scale) for x in pil_image.size),
+        resample=Image.Resampling.BICUBIC,
     )
 
     arr = np.array(pil_image)
@@ -60,27 +61,6 @@ def center_crop_arr(pil_image, image_size):
     return Image.fromarray(
         arr[crop_y : crop_y + image_size, crop_x : crop_x + image_size]
     )
-
-
-class ImageFolderWithFilename(datasets.ImageFolder):
-    def __getitem__(self, index: int):
-        """
-        Args:
-            index (int): Index
-
-        Returns:
-            tuple: (sample, target, filename).
-        """
-        path, target = self.samples[index]
-        sample = self.loader(path)
-        if self.transform is not None:
-            sample = self.transform(sample)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
-        filename = path.split(os.path.sep)[-2:]
-        filename = os.path.join(*filename)
-        return sample, target, filename
 
 
 def get_args_parser():
@@ -134,7 +114,7 @@ def get_args_parser():
 
 def convert_json_to_jsonl(input_pattern, output_file):
     with open(output_file, "w") as outfile:
-        for filename in tqdm.tqdm(glob.glob(input_pattern)):
+        for filename in tqdm(glob.glob(input_pattern)):
             with open(filename, "r") as infile:
                 data = json.load(infile)
                 for item in data:
@@ -192,33 +172,35 @@ def main(args):
             ]
         )
 
-    dataset_train = ImageFolderWithFilename(
-        os.path.join(args.data_path, "train"), transform=transform_train
-    )
-    print(dataset_train)
+    def make_sample(sample):
+        return transform_train(sample["jpg"]), sample["cls"]
 
-    sampler_train = torch.utils.data.DistributedSampler(
-        dataset_train,
-        num_replicas=num_tasks,
-        rank=global_rank,
-        shuffle=False,
-    )
-    print("Sampler_train = %s" % str(sampler_train))
+    train_pattern = args.data_path
 
-    data_loader_train = torch.utils.data.DataLoader(
+    dataset_train = wds.WebDataset(
+        train_pattern,
+        resampled=True,
+        shardshuffle=True,
+        cache_dir=args.cached_path,
+        nodesplitter=wds.split_by_node,
+    )
+    dataset_train = dataset_train.decode("pil").map(make_sample)
+    dataset_train = dataset_train.batched(args.batch_size)
+
+    data_loader_train = wds.WebLoader(
         dataset_train,
-        sampler=sampler_train,
-        batch_size=args.batch_size,
+        batch_size=None,
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
-        drop_last=False,  # Don't drop in cache
+        drop_last=False,
     )
+
     if global_rank == 0:
         from huggingface_hub import hf_hub_download
 
         hf_hub_download(
             repo_id="fun-research/TiTok",
-            filename=f"maskgit-vqgan-imagenet-f16-256.bin",
+            filename="maskgit-vqgan-imagenet-f16-256.bin",
             local_dir="./",
         )
     if misc.is_dist_avail_and_initialized():
@@ -233,7 +215,7 @@ def main(args):
 
     print(f"Start caching latents, {args.rank}, {args.gpu}")
     start_time = time.time()
-    for samples, target, paths in tqdm(data_loader_train):
+    for samples, target in tqdm(data_loader_train):
         samples = samples.to(device, non_blocking=True)
 
         if args.ten_crop:
