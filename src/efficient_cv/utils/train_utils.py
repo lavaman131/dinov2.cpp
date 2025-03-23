@@ -24,7 +24,7 @@ import glob
 from collections import defaultdict
 import open_clip
 
-from data import SimpleImageDataset, PretoeknizedDataSetJSONL, PretokenizedWebDataset
+from data.webdataset_reader import SimpleImageDataset, PretoeknizedDataSetJSONL, PretokenizedWebDataset
 import torch
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf

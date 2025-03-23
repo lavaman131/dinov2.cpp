@@ -25,7 +25,7 @@ import torch.nn.functional as F
 from einops import rearrange
 from torch.cuda.amp import autocast
 
-from modeling.diffusion import create_diffusion
+#from modeling.diffusion import create_diffusion
 from modeling.modules.blocks import SimpleMLPAdaLN
 from .perceptual_loss import PerceptualLoss
 from .discriminator import NLayerDiscriminator
@@ -393,7 +393,7 @@ class ARLoss(torch.nn.Module):
         return loss, {"loss": loss, "correct_tokens": correct_tokens.mean()}
     
 
-class DiffLoss(nn.Module):
+'''class DiffLoss(nn.Module):
     """Diffusion Loss"""
     def __init__(self, config):
         super(DiffLoss, self).__init__()
@@ -442,4 +442,4 @@ class DiffLoss(nn.Module):
             temperature=temperature
         )
 
-        return sampled_token_latent
+        return sampled_token_latent'''
