@@ -7,9 +7,9 @@
 #$ -pe omp 4
 #$ -j y # Merge the error and output streams into a single file
 
-module load cmake ffmpeg gcc/10.2.0 llvm/9.0.1 miniconda openmpi cuda/12.2
+module load cmake ffmpeg gcc/10.2.0 llvm/9.0.1 miniconda openmpi cuda/11.8
 
-conda activate titok-pretokenization
+conda activate eff-cv
 
 # Keep track of information related to the current job
 echo "=========================================================="
@@ -21,5 +21,6 @@ echo "=========================================================="
 
 INPUT_DIR=/projectnb/dl4ds/materials/datasets/imagenet
 OUTPUT_DIR=/projectnb/dl4ds/materials/datasets/imagenet-tokenized
- 
-python ./scripts/pretokenization.py --cached_path $OUTPUT_DIR --data_path $INPUT_DIR
+SUFFIX="imagenet-train-{000000..000320}.tar"
+
+python ./scripts/pretokenization.py --cached_path $OUTPUT_DIR --data_path $INPUT_DIR/$SUFFIX
