@@ -3,7 +3,7 @@
 #$ -P dl4ds
 #$ -l h_rt=24:00:00
 #$ -l gpus=2
-#$ -l gpu_memory=80G
+#$ -l gpu_memory=40G
 #$ -N pretokenization
 #$ -pe omp 8
 #$ -j y # Merge the error and output streams into a single file
@@ -41,7 +41,7 @@ torchrun \
     --rdzv-endpoint $RDZV_ENDPOINT \
     ./scripts/train/pretokenization.py \
     --img_size 256 \
-    --batch_size 40 \
+    --batch_size 20 \
     --ten_crop \
     --data_path $DATA_DIR/$SUFFIX \
     --cached_path $SAVE_DIR
