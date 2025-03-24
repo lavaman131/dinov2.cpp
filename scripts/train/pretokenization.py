@@ -26,7 +26,7 @@ import webdataset as wds
 import os
 import time
 from pathlib import Path
-
+import uuid
 import torch
 import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
@@ -243,23 +243,26 @@ def main(args):
             print(f"{args.rank} processed {len(processed)} batches")
 
     print(f"{args.rank} processed {len(processed)} samples")
-    target_json_path = f"{args.cached_path}/pretokenized_{args.rank}"
+    save_id = str(uuid.uuid4())
+    target_json_path = f"{args.cached_path}/pretokenized_{args.rank}_{save_id}"
     target_json_path = target_json_path + ".json"
     with open(target_json_path, "w") as json_f:
         json.dump(processed, json_f)
-    if misc.is_dist_avail_and_initialized():
-        torch.cuda.synchronize()
-
-    # write into a single jsonl
-    if global_rank == 0:
-        convert_json_to_jsonl(
-            f"{args.cached_path}/pretokenized_*.json",
-            f"{args.cached_path}/pretokenized.jsonl",
-        )
 
     if misc.is_dist_avail_and_initialized():
         torch.cuda.synchronize()
         torch.distributed.destroy_process_group()
+
+    # write into a single jsonl
+    # if global_rank == 0:
+    #     convert_json_to_jsonl(
+    #         f"{args.cached_path}/pretokenized_*.json",
+    #         f"{args.cached_path}/pretokenized.jsonl",
+    #     )
+
+    # if misc.is_dist_avail_and_initialized():
+    #     torch.cuda.synchronize()
+    #     torch.distributed.destroy_process_group()
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
