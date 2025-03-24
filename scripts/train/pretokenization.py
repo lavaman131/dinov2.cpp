@@ -240,7 +240,7 @@ def main(args):
             torch.cuda.synchronize()
 
         if idx % 1000 == 0:
-            print(f"{args.rank} processed {len(processed)} batches")
+            print(f"{args.rank} processed {len(processed)} samples")
 
     print(f"{args.rank} processed {len(processed)} samples")
     save_id = str(uuid.uuid4())

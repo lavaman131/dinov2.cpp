@@ -22,7 +22,7 @@ echo "=========================================================="
 
 DATA_DIR=/projectnb/dl4ds/materials/datasets/imagenet
 SAVE_DIR=/projectnb/dl4ds/materials/datasets/imagenet-tokenized
-SUFFIX="imagenet-train-{000000..000320}.tar"
+SUFFIX="imagenet-train-{000000..000106}.tar"
 
 NCCL_SOCKET_IFNAME=ib # use all infiniband interfaces
 MASTER_ADDR="localhost"
