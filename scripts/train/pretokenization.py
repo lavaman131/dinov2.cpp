@@ -145,7 +145,10 @@ def main():
     global_rank = misc.get_rank()
 
     NUM_IMAGENET_TRAIN_SAMPLES = 1_281_167
-    ONE_EPOCH = math.ceil(NUM_IMAGENET_TRAIN_SAMPLES / args.batch_size / num_tasks)
+    GLOBAL_BATCH_SIZE = args.batch_size * num_tasks
+    ONE_EPOCH = math.ceil(
+        NUM_IMAGENET_TRAIN_SAMPLES / (GLOBAL_BATCH_SIZE * args.num_workers)
+    )
     LOG_INTERVAL = 1000
 
     if args.ten_crop:
