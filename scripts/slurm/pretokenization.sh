@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #$ -P dl4ds
-#$ -l h_rt=24:00:00
+#$ -l h_rt=48:00:00
 #$ -l gpus=2
 #$ -l gpu_memory=40G
 #$ -N pretokenization
@@ -22,7 +22,7 @@ echo "=========================================================="
 
 DATA_DIR=/projectnb/dl4ds/materials/datasets/imagenet
 SAVE_DIR=/projectnb/dl4ds/materials/datasets/imagenet-tokenized
-SUFFIX="imagenet-train-{000000..000106}.tar"
+SUFFIX="imagenet-train-{000000..000320}.tar"
 
 NCCL_SOCKET_IFNAME=ib # use all infiniband interfaces
 MASTER_ADDR="localhost"

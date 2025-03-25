@@ -16,6 +16,7 @@ torchrun --nproc_per_node=8 --nnodes=1 --node_rank=0 --rdzv-endpoint=localhost:9
     --data_path ${PATH_TO_IMAGENET} --cached_path ${PATH_TO_SAVE_JSONL}
 """
 
+import math
 import builtins
 import argparse
 import datetime
@@ -122,9 +123,9 @@ def convert_json_to_jsonl(input_pattern, output_file):
                     outfile.write("\n")
 
 
-@torch.no_grad()
-def main(args):
-    NUM_IMAGENET_TRAIN_SAMPLES = 1_281_167
+def main():
+    args = get_args_parser()
+    args = args.parse_args()
     os.makedirs(args.cached_path, exist_ok=True)
     misc.init_distributed_mode(args)
 
@@ -142,6 +143,10 @@ def main(args):
 
     num_tasks = misc.get_world_size()
     global_rank = misc.get_rank()
+
+    NUM_IMAGENET_TRAIN_SAMPLES = 1_281_167
+    ONE_EPOCH = math.ceil(NUM_IMAGENET_TRAIN_SAMPLES / args.batch_size / num_tasks)
+    LOG_INTERVAL = 1000
 
     if args.ten_crop:
         # augmentation following LLamaGen
@@ -194,7 +199,7 @@ def main(args):
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
         drop_last=False,
-    ).with_epoch(NUM_IMAGENET_TRAIN_SAMPLES)
+    ).with_epoch(ONE_EPOCH)
 
     if global_rank == 0:
         from huggingface_hub import hf_hub_download
@@ -225,7 +230,7 @@ def main(args):
         else:
             samples_all = torch.cat([samples, torch.flip(samples, dims=[-1])])
             target_all = torch.cat([target, target])
-        with torch.no_grad():
+        with torch.inference_mode():
             codes = tokenizer.encode(samples_all)
 
         for b in range(codes.shape[0]):
@@ -236,13 +241,13 @@ def main(args):
                 }
             )
 
-        if misc.is_dist_avail_and_initialized():
-            torch.cuda.synchronize()
+        if (idx + 1) % LOG_INTERVAL == 0:
+            print(f"rank {args.rank} processed {len(processed)} samples")
 
-        if idx % 1000 == 0:
-            print(f"{args.rank} processed {len(processed)} samples")
+    if misc.is_dist_avail_and_initialized():
+        torch.cuda.synchronize()
 
-    print(f"{args.rank} processed {len(processed)} samples")
+    print(f"rank {args.rank} finished processing {len(processed)} samples")
     save_id = str(uuid.uuid4())
     target_json_path = f"{args.cached_path}/pretokenized_{args.rank}_{save_id}"
     target_json_path = target_json_path + ".json"
@@ -251,18 +256,16 @@ def main(args):
 
     if misc.is_dist_avail_and_initialized():
         torch.cuda.synchronize()
-        torch.distributed.destroy_process_group()
 
     # write into a single jsonl
-    # if global_rank == 0:
-    #     convert_json_to_jsonl(
-    #         f"{args.cached_path}/pretokenized_*.json",
-    #         f"{args.cached_path}/pretokenized.jsonl",
-    #     )
+    if global_rank == 0:
+        convert_json_to_jsonl(
+            f"{args.cached_path}/pretokenized_*.json",
+            f"{args.cached_path}/pretokenized.jsonl",
+        )
 
-    # if misc.is_dist_avail_and_initialized():
-    #     torch.cuda.synchronize()
-    #     torch.distributed.destroy_process_group()
+    if misc.is_dist_avail_and_initialized():
+        torch.distributed.destroy_process_group()
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -270,6 +273,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = get_args_parser()
-    args = args.parse_args()
-    main(args)
+    main()
