@@ -44,4 +44,5 @@ torchrun \
     --batch_size 20 \
     --ten_crop \
     --data_path $DATA_DIR/$SUFFIX \
-    --cached_path $SAVE_DIR
+    --cached_path $SAVE_DIR \
+    --num_workers 4
