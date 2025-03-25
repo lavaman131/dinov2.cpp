@@ -1,0 +1,448 @@
+==========================================================
+Start date : Mon Mar 24 14:27:56 EDT 2025
+Job name : pretokenization
+Job ID : 3205702
+Host : 
+==========================================================
+attention mode is flash
+attention mode is flash
+| distributed init (rank 0): env://, gpu 0
+| distributed init (rank 1): env://, gpu 1
+[14:28:48.662582] job dir: /projectnb/dl4ds/students/mickra/efficient-cv/scripts/train
+[14:28:48.662662] Namespace(batch_size=20,
+img_size=256,
+data_path='/projectnb/dl4ds/materials/datasets/imagenet/imagenet-train-{000000..000320}.tar',
+device='cuda',
+seed=0,
+num_workers=10,
+pin_mem=True,
+world_size=2,
+local_rank=-1,
+dist_on_itp=False,
+dist_url='env://',
+cached_path='/projectnb/dl4ds/materials/datasets/imagenet-tokenized',
+ten_crop=False,
+rank=0,
+gpu=0,
+distributed=True,
+dist_backend='nccl')
+[14:28:50.008457] Start caching latents, 0, 0
+[14:28:54.202175] 0 processed 40 samples
+[14:32:09.794740] 0 processed 40040 samples
+[14:35:25.555882] 0 processed 80040 samples
+[14:38:41.647788] 0 processed 120040 samples
+[14:41:57.511331] 0 processed 160040 samples
+[14:45:13.853552] 0 processed 200040 samples
+[14:48:29.758894] 0 processed 240040 samples
+[14:51:45.644003] 0 processed 280040 samples
+[14:55:02.193543] 0 processed 320040 samples
+[14:58:18.042981] 0 processed 360040 samples
+[15:01:33.915942] 0 processed 400040 samples
+[15:04:50.811372] 0 processed 440040 samples
+[15:08:06.663329] 0 processed 480040 samples
+[15:11:22.520396] 0 processed 520040 samples
+[15:14:39.920130] 0 processed 560040 samples
+[15:17:55.765343] 0 processed 600040 samples
+[15:21:11.609093] 0 processed 640040 samples
+[15:24:27.416900] 0 processed 680040 samples
+[15:27:43.217613] 0 processed 720040 samples
+[15:31:01.053273] 0 processed 760040 samples
+[15:34:16.840686] 0 processed 800040 samples
+[15:37:32.676937] 0 processed 840040 samples
+[15:40:48.715265] 0 processed 880040 samples
+[15:44:04.558684] 0 processed 920040 samples
+[15:47:20.561358] 0 processed 960040 samples
+[15:50:39.180082] 0 processed 1000040 samples
+[15:53:55.014814] 0 processed 1040040 samples
+[15:57:10.836550] 0 processed 1080040 samples
+[16:00:26.759693] 0 processed 1120040 samples
+[16:03:42.773311] 0 processed 1160040 samples
+[16:06:58.770684] 0 processed 1200040 samples
+[16:10:14.711121] 0 processed 1240040 samples
+[16:13:34.074498] 0 processed 1280040 samples
+[16:16:49.969101] 0 processed 1320040 samples
+[16:20:05.697154] 0 processed 1360040 samples
+[16:23:21.237342] 0 processed 1400040 samples
+[16:26:36.749213] 0 processed 1440040 samples
+[16:29:52.230657] 0 processed 1480040 samples
+[16:33:07.699057] 0 processed 1520040 samples
+[16:36:23.163984] 0 processed 1560040 samples
+[16:39:38.586017] 0 processed 1600040 samples
+[16:42:58.836740] 0 processed 1640040 samples
+[16:46:14.597820] 0 processed 1680040 samples
+[16:49:30.383109] 0 processed 1720040 samples
+[16:52:46.170694] 0 processed 1760040 samples
+[16:56:01.980271] 0 processed 1800040 samples
+[16:59:17.750462] 0 processed 1840040 samples
+[17:02:33.550150] 0 processed 1880040 samples
+[17:05:49.367029] 0 processed 1920040 samples
+[17:09:05.172012] 0 processed 1960040 samples
+[17:12:20.991731] 0 processed 2000040 samples
+[17:15:36.852270] 0 processed 2040040 samples
+[17:18:58.475525] 0 processed 2080040 samples
+[17:22:14.420493] 0 processed 2120040 samples
+[17:25:30.286441] 0 processed 2160040 samples
+[17:28:46.321248] 0 processed 2200040 samples
+[17:32:02.182446] 0 processed 2240040 samples
+[17:35:18.040442] 0 processed 2280040 samples
+[17:38:33.861592] 0 processed 2320040 samples
+[17:41:49.682501] 0 processed 2360040 samples
+[17:45:05.503799] 0 processed 2400040 samples
+[17:48:21.321401] 0 processed 2440040 samples
+[17:51:37.126965] 0 processed 2480040 samples
+[17:54:52.960113] 0 processed 2520040 samples
+[17:58:08.808855] 0 processed 2560040 samples
+[18:01:32.078346] 0 processed 2600040 samples
+[18:04:47.996036] 0 processed 2640040 samples
+[18:08:03.915581] 0 processed 2680040 samples
+[18:11:19.796249] 0 processed 2720040 samples
+[18:14:35.689972] 0 processed 2760040 samples
+[18:17:51.586045] 0 processed 2800040 samples
+[18:21:07.566822] 0 processed 2840040 samples
+[18:24:23.537470] 0 processed 2880040 samples
+[18:27:39.403430] 0 processed 2920040 samples
+[18:30:55.255819] 0 processed 2960040 samples
+[18:34:11.110823] 0 processed 3000040 samples
+[18:37:26.987710] 0 processed 3040040 samples
+[18:40:42.860854] 0 processed 3080040 samples
+[18:43:58.752500] 0 processed 3120040 samples
+[18:47:14.707028] 0 processed 3160040 samples
+[18:50:30.659797] 0 processed 3200040 samples
+[18:53:46.866399] 0 processed 3240040 samples
+[18:57:11.920981] 0 processed 3280040 samples
+[19:00:27.884814] 0 processed 3320040 samples
+[19:03:43.875201] 0 processed 3360040 samples
+[19:06:59.920088] 0 processed 3400040 samples
+[19:10:15.918066] 0 processed 3440040 samples
+[19:13:32.253523] 0 processed 3480040 samples
+[19:16:48.367872] 0 processed 3520040 samples
+[19:20:03.926790] 0 processed 3560040 samples
+[19:23:19.425107] 0 processed 3600040 samples
+[19:26:34.889810] 0 processed 3640040 samples
+[19:29:50.353623] 0 processed 3680040 samples
+[19:33:05.783540] 0 processed 3720040 samples
+[19:36:21.249733] 0 processed 3760040 samples
+[19:39:36.688020] 0 processed 3800040 samples
+[19:42:52.141535] 0 processed 3840040 samples
+[19:46:07.559699] 0 processed 3880040 samples
+[19:49:22.998337] 0 processed 3920040 samples
+[19:52:38.440390] 0 processed 3960040 samples
+[19:55:53.936515] 0 processed 4000040 samples
+[19:59:09.571257] 0 processed 4040040 samples
+[20:02:37.473104] 0 processed 4080040 samples
+[20:05:52.854631] 0 processed 4120040 samples
+[20:09:08.289719] 0 processed 4160040 samples
+[20:12:23.728072] 0 processed 4200040 samples
+[20:15:39.153330] 0 processed 4240040 samples
+[20:18:54.578808] 0 processed 4280040 samples
+[20:22:09.984269] 0 processed 4320040 samples
+[20:25:25.409331] 0 processed 4360040 samples
+[20:28:40.863680] 0 processed 4400040 samples
+[20:31:56.317047] 0 processed 4440040 samples
+[20:35:11.775486] 0 processed 4480040 samples
+[20:38:27.204581] 0 processed 4520040 samples
+[20:41:42.641205] 0 processed 4560040 samples
+[20:44:58.076850] 0 processed 4600040 samples
+[20:48:13.434117] 0 processed 4640040 samples
+[20:51:28.844863] 0 processed 4680040 samples
+[20:54:44.309793] 0 processed 4720040 samples
+[20:57:59.809042] 0 processed 4760040 samples
+[21:01:15.254237] 0 processed 4800040 samples
+[21:04:30.647989] 0 processed 4840040 samples
+[21:07:46.023273] 0 processed 4880040 samples
+[21:11:01.445907] 0 processed 4920040 samples
+[21:14:16.994924] 0 processed 4960040 samples
+[21:17:32.479721] 0 processed 5000040 samples
+[21:20:47.895385] 0 processed 5040040 samples
+[21:24:03.228598] 0 processed 5080040 samples
+[21:27:33.582979] 0 processed 5120040 samples
+[21:30:48.966199] 0 processed 5160040 samples
+[21:34:04.389861] 0 processed 5200040 samples
+[21:37:19.841109] 0 processed 5240040 samples
+[21:40:35.422646] 0 processed 5280040 samples
+[21:43:51.175972] 0 processed 5320040 samples
+[21:47:06.795686] 0 processed 5360040 samples
+[21:50:23.189069] 0 processed 5400040 samples
+[21:53:39.215830] 0 processed 5440040 samples
+[21:56:55.523218] 0 processed 5480040 samples
+[22:00:11.156088] 0 processed 5520040 samples
+[22:03:26.788918] 0 processed 5560040 samples
+[22:06:42.408328] 0 processed 5600040 samples
+[22:09:58.054812] 0 processed 5640040 samples
+[22:13:13.673596] 0 processed 5680040 samples
+[22:16:29.294279] 0 processed 5720040 samples
+[22:19:44.935472] 0 processed 5760040 samples
+[22:23:00.610303] 0 processed 5800040 samples
+[22:26:16.382770] 0 processed 5840040 samples
+[22:29:31.879614] 0 processed 5880040 samples
+[22:32:47.452203] 0 processed 5920040 samples
+[22:36:02.901201] 0 processed 5960040 samples
+[22:39:18.521108] 0 processed 6000040 samples
+[22:42:34.088097] 0 processed 6040040 samples
+[22:45:49.630393] 0 processed 6080040 samples
+[22:49:05.144634] 0 processed 6120040 samples
+[22:52:20.580017] 0 processed 6160040 samples
+[22:55:36.111846] 0 processed 6200040 samples
+[22:58:51.876439] 0 processed 6240040 samples
+[23:02:07.481028] 0 processed 6280040 samples
+[23:05:23.039783] 0 processed 6320040 samples
+[23:08:38.600294] 0 processed 6360040 samples
+[23:12:53.886598] 0 processed 6400040 samples
+[23:16:09.651044] 0 processed 6440040 samples
+[23:19:25.365563] 0 processed 6480040 samples
+[23:22:41.279285] 0 processed 6520040 samples
+[23:25:57.545006] 0 processed 6560040 samples
+[23:29:13.913875] 0 processed 6600040 samples
+[23:32:30.001934] 0 processed 6640040 samples
+[23:35:46.040561] 0 processed 6680040 samples
+[23:39:02.922781] 0 processed 6720040 samples
+[23:42:19.986808] 0 processed 6760040 samples
+[23:45:36.943814] 0 processed 6800040 samples
+[23:48:54.062103] 0 processed 6840040 samples
+[23:52:10.655078] 0 processed 6880040 samples
+[23:55:27.465542] 0 processed 6920040 samples
+[23:58:44.599042] 0 processed 6960040 samples
+[00:02:01.747756] 0 processed 7000040 samples
+[00:05:18.756507] 0 processed 7040040 samples
+[00:08:35.903294] 0 processed 7080040 samples
+[00:11:53.045360] 0 processed 7120040 samples
+[00:15:10.197116] 0 processed 7160040 samples
+[00:18:27.330232] 0 processed 7200040 samples
+[00:21:44.037130] 0 processed 7240040 samples
+[00:25:01.042686] 0 processed 7280040 samples
+[00:28:18.142298] 0 processed 7320040 samples
+[00:31:35.101442] 0 processed 7360040 samples
+[00:34:51.957426] 0 processed 7400040 samples
+[00:38:08.672720] 0 processed 7440040 samples
+[00:41:25.712978] 0 processed 7480040 samples
+[00:44:42.543717] 0 processed 7520040 samples
+[00:47:59.680893] 0 processed 7560040 samples
+[00:51:16.822065] 0 processed 7600040 samples
+[00:54:33.918788] 0 processed 7640040 samples
+[00:57:51.060191] 0 processed 7680040 samples
+[01:01:08.160539] 0 processed 7720040 samples
+[01:04:25.243017] 0 processed 7760040 samples
+[01:07:42.346550] 0 processed 7800040 samples
+[01:10:59.475212] 0 processed 7840040 samples
+[01:14:16.574733] 0 processed 7880040 samples
+[01:17:33.668076] 0 processed 7920040 samples
+[01:21:42.206034] 0 processed 7960040 samples
+[01:24:59.333900] 0 processed 8000040 samples
+[01:28:15.384402] 0 processed 8040040 samples
+[01:31:31.972107] 0 processed 8080040 samples
+[01:34:49.173744] 0 processed 8120040 samples
+[01:38:05.960187] 0 processed 8160040 samples
+[01:41:23.436397] 0 processed 8200040 samples
+[01:44:40.100081] 0 processed 8240040 samples
+[01:47:57.117804] 0 processed 8280040 samples
+[01:51:14.071253] 0 processed 8320040 samples
+[01:54:31.499928] 0 processed 8360040 samples
+[01:57:48.351690] 0 processed 8400040 samples
+[02:01:05.296555] 0 processed 8440040 samples
+[02:04:22.392270] 0 processed 8480040 samples
+[02:07:39.315542] 0 processed 8520040 samples
+[02:10:56.477395] 0 processed 8560040 samples
+[02:14:13.597465] 0 processed 8600040 samples
+[02:17:30.655190] 0 processed 8640040 samples
+[02:20:47.763211] 0 processed 8680040 samples
+[02:24:04.720934] 0 processed 8720040 samples
+[02:27:21.865745] 0 processed 8760040 samples
+[02:30:39.044860] 0 processed 8800040 samples
+[02:33:56.257701] 0 processed 8840040 samples
+[02:37:13.451729] 0 processed 8880040 samples
+[02:40:30.641204] 0 processed 8920040 samples
+[02:43:47.786730] 0 processed 8960040 samples
+[02:47:05.001454] 0 processed 9000040 samples
+[02:50:22.210527] 0 processed 9040040 samples
+[02:53:38.836691] 0 processed 9080040 samples
+[02:56:54.348962] 0 processed 9120040 samples
+[03:00:10.652729] 0 processed 9160040 samples
+[03:03:26.299674] 0 processed 9200040 samples
+[03:06:41.959371] 0 processed 9240040 samples
+[03:09:57.604037] 0 processed 9280040 samples
+[03:13:13.257548] 0 processed 9320040 samples
+[03:16:28.911571] 0 processed 9360040 samples
+[03:19:44.659829] 0 processed 9400040 samples
+[03:23:00.410017] 0 processed 9440040 samples
+[03:26:16.065806] 0 processed 9480040 samples
+[03:29:31.761672] 0 processed 9520040 samples
+[03:32:47.443592] 0 processed 9560040 samples
+[03:36:03.212632] 0 processed 9600040 samples
+[03:39:18.744183] 0 processed 9640040 samples
+[03:42:34.273295] 0 processed 9680040 samples
+[03:45:49.797047] 0 processed 9720040 samples
+[03:49:05.338588] 0 processed 9760040 samples
+[03:52:20.932999] 0 processed 9800040 samples
+[03:55:36.458089] 0 processed 9840040 samples
+[03:58:52.046389] 0 processed 9880040 samples
+[04:03:08.336950] 0 processed 9920040 samples
+[04:06:24.492782] 0 processed 9960040 samples
+[04:09:40.130781] 0 processed 10000040 samples
+[04:12:55.801031] 0 processed 10040040 samples
+[04:16:11.438966] 0 processed 10080040 samples
+[04:19:27.096561] 0 processed 10120040 samples
+[04:22:42.683531] 0 processed 10160040 samples
+[04:25:58.434261] 0 processed 10200040 samples
+[04:29:14.030631] 0 processed 10240040 samples
+[04:32:29.582554] 0 processed 10280040 samples
+[04:35:45.133041] 0 processed 10320040 samples
+[04:39:01.089637] 0 processed 10360040 samples
+[04:42:17.140102] 0 processed 10400040 samples
+[04:45:33.148328] 0 processed 10440040 samples
+[04:48:49.178189] 0 processed 10480040 samples
+[04:52:05.151142] 0 processed 10520040 samples
+[04:55:21.115265] 0 processed 10560040 samples
+[04:58:37.129195] 0 processed 10600040 samples
+[05:01:53.133140] 0 processed 10640040 samples
+[05:05:09.178618] 0 processed 10680040 samples
+[05:08:25.677670] 0 processed 10720040 samples
+[05:11:41.722630] 0 processed 10760040 samples
+[05:14:57.850011] 0 processed 10800040 samples
+[05:18:14.177256] 0 processed 10840040 samples
+[05:21:30.215314] 0 processed 10880040 samples
+[05:24:46.700226] 0 processed 10920040 samples
+[05:28:02.791046] 0 processed 10960040 samples
+[05:31:18.765976] 0 processed 11000040 samples
+[05:34:34.882514] 0 processed 11040040 samples
+[05:37:50.852960] 0 processed 11080040 samples
+[05:41:06.900478] 0 processed 11120040 samples
+[05:44:23.316353] 0 processed 11160040 samples
+[05:47:39.430002] 0 processed 11200040 samples
+[05:50:55.468720] 0 processed 11240040 samples
+[05:54:11.425718] 0 processed 11280040 samples
+[05:57:27.561166] 0 processed 11320040 samples
+[06:00:43.673230] 0 processed 11360040 samples
+[06:03:59.682600] 0 processed 11400040 samples
+[06:07:15.753569] 0 processed 11440040 samples
+[06:10:31.931436] 0 processed 11480040 samples
+[06:13:47.814846] 0 processed 11520040 samples
+[06:17:03.702907] 0 processed 11560040 samples
+[06:20:20.060497] 0 processed 11600040 samples
+[06:23:36.226674] 0 processed 11640040 samples
+[06:26:53.135936] 0 processed 11680040 samples
+[06:30:10.081802] 0 processed 11720040 samples
+[06:33:26.632429] 0 processed 11760040 samples
+[06:36:42.812752] 0 processed 11800040 samples
+[06:39:58.845345] 0 processed 11840040 samples
+[06:43:14.881547] 0 processed 11880040 samples
+[06:46:30.942139] 0 processed 11920040 samples
+[06:49:47.389863] 0 processed 11960040 samples
+[06:53:03.308278] 0 processed 12000040 samples
+[06:56:19.064987] 0 processed 12040040 samples
+[06:59:34.932243] 0 processed 12080040 samples
+[07:02:50.714725] 0 processed 12120040 samples
+[07:06:06.526640] 0 processed 12160040 samples
+[07:09:22.287568] 0 processed 12200040 samples
+[07:12:38.030579] 0 processed 12240040 samples
+[07:15:53.788714] 0 processed 12280040 samples
+[07:19:09.427359] 0 processed 12320040 samples
+[07:23:54.313765] 0 processed 12360040 samples
+[07:27:11.439690] 0 processed 12400040 samples
+[07:30:28.013489] 0 processed 12440040 samples
+[07:33:44.964408] 0 processed 12480040 samples
+[07:37:02.110458] 0 processed 12520040 samples
+[07:40:19.121178] 0 processed 12560040 samples
+[07:43:35.966091] 0 processed 12600040 samples
+[07:46:51.565645] 0 processed 12640040 samples
+[07:50:07.233133] 0 processed 12680040 samples
+[07:53:22.879252] 0 processed 12720040 samples
+[07:56:38.607423] 0 processed 12760040 samples
+[07:59:54.336024] 0 processed 12800040 samples
+[08:03:10.072346] 0 processed 12840040 samples
+[08:06:26.867246] 0 processed 12880040 samples
+[08:09:43.409280] 0 processed 12920040 samples
+[08:13:00.402699] 0 processed 12960040 samples
+[08:16:17.444856] 0 processed 13000040 samples
+[08:19:34.472442] 0 processed 13040040 samples
+[08:22:50.670228] 0 processed 13080040 samples
+[08:26:06.732687] 0 processed 13120040 samples
+[08:29:22.883513] 0 processed 13160040 samples
+[08:32:39.302787] 0 processed 13200040 samples
+[08:35:55.083747] 0 processed 13240040 samples
+[08:39:10.728784] 0 processed 13280040 samples
+[08:42:26.597186] 0 processed 13320040 samples
+[08:45:42.141014] 0 processed 13360040 samples
+[08:48:58.103065] 0 processed 13400040 samples
+[08:52:14.337781] 0 processed 13440040 samples
+[08:55:30.285805] 0 processed 13480040 samples
+[08:58:46.432213] 0 processed 13520040 samples
+[09:02:02.456352] 0 processed 13560040 samples
+[09:05:18.265088] 0 processed 13600040 samples
+[09:08:34.341336] 0 processed 13640040 samples
+[09:11:50.580007] 0 processed 13680040 samples
+[09:15:06.365042] 0 processed 13720040 samples
+[09:18:21.978711] 0 processed 13760040 samples
+[09:21:37.568892] 0 processed 13800040 samples
+[09:24:53.233242] 0 processed 13840040 samples
+[09:28:08.873927] 0 processed 13880040 samples
+[09:31:24.448994] 0 processed 13920040 samples
+[09:34:39.971087] 0 processed 13960040 samples
+[09:37:55.599147] 0 processed 14000040 samples
+[09:41:11.656301] 0 processed 14040040 samples
+[09:44:27.493722] 0 processed 14080040 samples
+[09:47:43.319108] 0 processed 14120040 samples
+[09:50:59.083598] 0 processed 14160040 samples
+[09:54:14.704339] 0 processed 14200040 samples
+[09:57:30.334530] 0 processed 14240040 samples
+[10:00:46.414622] 0 processed 14280040 samples
+[10:04:01.989561] 0 processed 14320040 samples
+[10:07:17.567500] 0 processed 14360040 samples
+[10:10:33.561556] 0 processed 14400040 samples
+[10:13:49.246119] 0 processed 14440040 samples
+[10:17:04.813554] 0 processed 14480040 samples
+[10:20:20.728001] 0 processed 14520040 samples
+[10:23:36.623790] 0 processed 14560040 samples
+[10:26:52.353297] 0 processed 14600040 samples
+[10:30:08.414373] 0 processed 14640040 samples
+[10:33:24.155075] 0 processed 14680040 samples
+[10:36:39.886179] 0 processed 14720040 samples
+[10:39:55.560218] 0 processed 14760040 samples
+[10:43:11.493081] 0 processed 14800040 samples
+[10:46:27.381833] 0 processed 14840040 samples
+[10:49:43.129622] 0 processed 14880040 samples
+[10:52:58.800932] 0 processed 14920040 samples
+[10:56:16.281871] 0 processed 14960040 samples
+[10:59:32.817629] 0 processed 15000040 samples
+[11:02:49.773427] 0 processed 15040040 samples
+[11:06:08.113343] 0 processed 15080040 samples
+[11:09:26.192184] 0 processed 15120040 samples
+[11:12:44.120823] 0 processed 15160040 samples
+[11:16:02.434753] 0 processed 15200040 samples
+[11:19:20.830690] 0 processed 15240040 samples
+[11:22:37.968750] 0 processed 15280040 samples
+[11:25:55.017948] 0 processed 15320040 samples
+[11:30:43.359684] 0 processed 15360040 samples
+[11:34:01.080534] 0 processed 15400040 samples
+[11:37:20.712210] 0 processed 15440040 samples
+[11:40:38.962716] 0 processed 15480040 samples
+[11:58:03.010417] 0 processed 15520040 samples
+E0325 12:02:35.895000 2400377 site-packages/torch/distributed/elastic/multiprocessing/api.py:869] failed (exitcode: -9) local_rank: 1 (pid: 2400398) of binary: /projectnb/dl4ds/students/mickra/envs/eff-cv/bin/python
+Traceback (most recent call last):
+  File "/projectnb/dl4ds/students/mickra/envs/eff-cv/bin/torchrun", line 8, in <module>
+    sys.exit(main())
+  File "/projectnb/dl4ds/students/mickra/envs/eff-cv/lib/python3.10/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 355, in wrapper
+    return f(*args, **kwargs)
+  File "/projectnb/dl4ds/students/mickra/envs/eff-cv/lib/python3.10/site-packages/torch/distributed/run.py", line 918, in main
+    run(args)
+  File "/projectnb/dl4ds/students/mickra/envs/eff-cv/lib/python3.10/site-packages/torch/distributed/run.py", line 909, in run
+    elastic_launch(
+  File "/projectnb/dl4ds/students/mickra/envs/eff-cv/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 138, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/projectnb/dl4ds/students/mickra/envs/eff-cv/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 269, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+========================================================
+./scripts/train/pretokenization.py FAILED
+--------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+--------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2025-03-25_12:02:35
+  host      : scc-504.scc.bu.edu
+  rank      : 1 (local_rank: 1)
+  exitcode  : -9 (pid: 2400398)
+  error_file: <N/A>
+  traceback : Signal 9 (SIGKILL) received by PID 2400398
+========================================================
