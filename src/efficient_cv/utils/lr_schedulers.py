@@ -2,21 +2,22 @@
 
 Copyright (2024) Bytedance Ltd. and/or its affiliates
 
-Licensed under the Apache License, Version 2.0 (the "License"); 
-you may not use this file except in compliance with the License. 
-You may obtain a copy of the License at 
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0 
+    http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software 
-distributed under the License is distributed on an "AS IS" BASIS, 
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-See the License for the specific language governing permissions and 
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
 limitations under the License.
 
 Reference:
     https://raw.githubusercontent.com/huggingface/open-muse/vqgan-finetuning/muse/lr_schedulers.py
 """
+
 import math
 from enum import Enum
 from typing import Optional, Union
@@ -24,9 +25,31 @@ from typing import Optional, Union
 import torch
 
 
+def adjust_learning_rate(optimizer, epoch, args):
+    """Decay the learning rate with half-cycle cosine after warmup"""
+    if epoch < args.warmup_epochs:
+        lr = args.lr * epoch / args.warmup_epochs
+    else:
+        lr = args.min_lr + (args.lr - args.min_lr) * 0.5 * (
+            1.0
+            + math.cos(
+                math.pi
+                * (epoch - args.warmup_epochs)
+                / (args.epochs - args.warmup_epochs)
+            )
+        )
+    for param_group in optimizer.param_groups:
+        if "lr_scale" in param_group:
+            param_group["lr"] = lr * param_group["lr_scale"]
+        else:
+            param_group["lr"] = lr
+    return lr
+
+
 class SchedulerType(Enum):
     COSINE = "cosine"
     CONSTANT = "constant"
+
 
 def get_cosine_schedule_with_warmup(
     optimizer: torch.optim.Optimizer,
@@ -43,7 +66,7 @@ def get_cosine_schedule_with_warmup(
         optimizer: A torch.optim.Optimizer, the optimizer for which to schedule the learning rate.
         num_warmup_steps: An integer, the number of steps for the warmup phase.
         num_training_steps: An integer, the total number of training steps.
-        num_cycles : A float, the number of periods of the cosine function in a schedule (the default is to 
+        num_cycles : A float, the number of periods of the cosine function in a schedule (the default is to
             just decrease from the max value to 0 following a half-cosine).
         last_epoch: An integer, the index of the last epoch when resuming training.
         base_lr: A float, the base learning rate.
@@ -56,9 +79,12 @@ def get_cosine_schedule_with_warmup(
     def lr_lambda(current_step):
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
-        progress = float(current_step - num_warmup_steps) / \
-            float(max(1, num_training_steps - num_warmup_steps))
-        ratio = max(0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)))
+        progress = float(current_step - num_warmup_steps) / float(
+            max(1, num_training_steps - num_warmup_steps)
+        )
+        ratio = max(
+            0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))
+        )
         return (end_lr + (base_lr - end_lr) * ratio) / base_lr
 
     return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch)
@@ -77,7 +103,7 @@ def get_constant_schedule_with_warmup(
         optimizer: A torch.optim.Optimizer, the optimizer for which to schedule the learning rate.
         num_warmup_steps: An integer, the number of steps for the warmup phase.
         num_training_steps: An integer, the total number of training steps.
-        num_cycles : A float, the number of periods of the cosine function in a schedule (the default is to 
+        num_cycles : A float, the number of periods of the cosine function in a schedule (the default is to
             just decrease from the max value to 0 following a half-cosine).
         last_epoch: An integer, the index of the last epoch when resuming training.
         base_lr: A float, the base learning rate.
@@ -100,6 +126,7 @@ TYPE_TO_SCHEDULER_FUNCTION = {
     SchedulerType.COSINE: get_cosine_schedule_with_warmup,
     SchedulerType.CONSTANT: get_constant_schedule_with_warmup,
 }
+
 
 def get_scheduler(
     name: Union[str, SchedulerType],
@@ -129,10 +156,14 @@ def get_scheduler(
     schedule_func = TYPE_TO_SCHEDULER_FUNCTION[name]
 
     if num_warmup_steps is None:
-        raise ValueError(f"{name} requires `num_warmup_steps`, please provide that argument.")
+        raise ValueError(
+            f"{name} requires `num_warmup_steps`, please provide that argument."
+        )
 
     if num_training_steps is None:
-        raise ValueError(f"{name} requires `num_training_steps`, please provide that argument.")
+        raise ValueError(
+            f"{name} requires `num_training_steps`, please provide that argument."
+        )
 
     return schedule_func(
         optimizer,
