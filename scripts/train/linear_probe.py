@@ -8,7 +8,7 @@ from pathlib import Path
 
 import torch
 import torch.backends.cudnn as cudnn
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter 
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import timm
@@ -21,6 +21,9 @@ from efficient_cv.data.crop import RandomResizedCrop
 
 from efficient_cv.train.finetune import train_one_epoch, evaluate
 
+import types
+
+from efficient_cv.models.titok import TiTok
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
@@ -233,7 +236,7 @@ def main(args):
 
     if global_rank == 0 and args.log_dir is not None and not args.eval:
         os.makedirs(args.log_dir, exist_ok=True)
-        log_writer = SummaryWriter(log_dir=args.log_dir)
+        # log_writer = SummaryWriter(log_dir=args.log_dir) # Don't have tensorboard
     else:
         log_writer = None
 
@@ -255,11 +258,16 @@ def main(args):
         drop_last=False,
     )
 
-    model = models_vit.__dict__[args.model](
-        num_classes=args.nb_classes,
-        global_pool=args.global_pool,
-    )
+    # Start loading model
+    # model = models_vit.__dict__[args.model](
+    #     num_classes=args.nb_classes,
+    #     global_pool=args.global_pool,
+    # )
+    
+    model = TiTok.from_pretrained("yucornetto/tokenizer_titok_s128_imagenet")
+    output_tokens = 128
 
+    # Skipped for now, not used by TiTok in paper
     if args.finetune and not args.eval:
         checkpoint = torch.load(args.finetune, map_location="cpu")
 
@@ -291,12 +299,32 @@ def main(args):
         # manually initialize fc layer: following MoCo v3
         trunc_normal_(model.head.weight, std=0.01)
 
-    # for linear prob only
-    # hack: revise model's head with BN
+    # # for linear prob only
+    # # hack: revise model's head with BN
+    # model.head = torch.nn.Sequential(
+    #     torch.nn.BatchNorm1d(model.head.in_features, affine=False, eps=1e-6), model.head
+    # )
+    # # freeze all but the head
+
+
+    # For linear probing, modify model's head to have linear layer, batch norm also used by MAE
     model.head = torch.nn.Sequential(
-        torch.nn.BatchNorm1d(model.head.in_features, affine=False, eps=1e-6), model.head
+        torch.nn.BatchNorm1d(output_tokens, affine=False, eps=1e-6),
+        torch.nn.Linear(output_tokens, 1000)
     )
-    # freeze all but the head
+
+    # Change model's forwarding to only use encoder and the new linear layer
+    def forward_linear_probe(self, x):
+        z_quantized, result_dict = self.encode(x)
+
+        # Global pooling, not sure if this is working as intended, might need more testing
+        pooled = z_quantized.mean(dim=1).squeeze(1)
+
+        return model.head(pooled)
+
+    model.forward = types.MethodType(forward_linear_probe, model)
+
+    # Freeze all layers besides the head
     for _, p in model.named_parameters():
         p.requires_grad = False
     for _, p in model.head.named_parameters():
@@ -410,8 +438,10 @@ def main(args):
 
 
 if __name__ == "__main__":
+    
     args = get_args_parser()
     args = args.parse_args()
+    test_model_loading(args) # Temporary function to see if I can load TiTok
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     main(args)
