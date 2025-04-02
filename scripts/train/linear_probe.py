@@ -314,15 +314,15 @@ def main(args):
     )
 
     # Change model's forwarding to only use encoder and the new linear layer
-    def forward_linear_probe(self, x):
-        z_quantized, result_dict = self.encode(x)
+    def forward_linear_probe(x):
+        z_quantized, result_dict = model.encode(x)
 
         # Global pooling, not sure if this is working as intended, might need more testing
         pooled = z_quantized.mean(dim=1).squeeze(1)
 
         return model.head(pooled)
 
-    model.forward = types.MethodType(forward_linear_probe, model)
+    model.forward = forward_linear_probe
 
     # Freeze all layers besides the head
     for _, p in model.named_parameters():
