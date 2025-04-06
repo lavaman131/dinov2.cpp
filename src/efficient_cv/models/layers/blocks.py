@@ -22,6 +22,7 @@ Reference:
 import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 from collections import OrderedDict
 import einops
@@ -262,6 +263,8 @@ class TiTokEncoder(nn.Module):
         self.model_size = config.model.vq_model.vit_enc_model_size
         self.num_latent_tokens = config.model.vq_model.num_latent_tokens
         self.token_size = config.model.vq_model.token_size
+        self.interpolate_antialias = False
+        self.interpolate_offset = 0.1
 
         if config.model.vq_model.get("quantize_mode", "vq") == "vae":
             self.token_size = self.token_size * 2  # needs to split into mean and std
@@ -309,9 +312,46 @@ class TiTokEncoder(nn.Module):
         self.ln_post = nn.LayerNorm(self.width)
         self.conv_out = nn.Conv2d(self.width, self.token_size, kernel_size=1, bias=True)
 
+    def interpolate_pos_encoding(self, x, w, h):
+        previous_dtype = x.dtype
+        npatch = x.shape[1] - 1
+        N = self.positional_embedding.shape[0] - 1
+        if npatch == N and w == h:
+            return self.positional_embedding
+        pos_embed = self.positional_embedding.float()
+        class_pos_embed = pos_embed[:, 0]
+        patch_pos_embed = pos_embed[:, 1:]
+        dim = x.shape[-1]
+        w0 = w // self.patch_size
+        h0 = h // self.patch_size
+        M = int(math.sqrt(N))  # Recover the number of patches in each dimension
+        assert N == M * M
+        kwargs = {}
+        if self.interpolate_offset:
+            # Historical kludge: add a small number to avoid floating point error in the interpolation, see https://github.com/facebookresearch/dino/issues/8
+            # Note: still needed for backward-compatibility, the underlying operators are using both output size and scale factors
+            sx = float(w0 + self.interpolate_offset) / M
+            sy = float(h0 + self.interpolate_offset) / M
+            kwargs["scale_factor"] = (sx, sy)
+        else:
+            # Simply specify an output size instead of a scale factor
+            kwargs["size"] = (w0, h0)
+        patch_pos_embed = F.interpolate(
+            patch_pos_embed.reshape(1, M, M, dim).permute(0, 3, 1, 2),
+            mode="bicubic",
+            antialias=self.interpolate_antialias,
+            **kwargs,
+        )
+        assert (w0, h0) == patch_pos_embed.shape[-2:]
+        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
+        return torch.cat((class_pos_embed.unsqueeze(0), patch_pos_embed), dim=1).to(
+            previous_dtype
+        )
+
     def forward(self, pixel_values, latent_tokens):
         batch_size = pixel_values.shape[0]
         x = pixel_values
+        h, w = x.shape[-2:]
         x = self.patch_embed(x)
         x = x.reshape(x.shape[0], x.shape[1], -1)
         x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
@@ -319,7 +359,7 @@ class TiTokEncoder(nn.Module):
         x = torch.cat(
             [_expand_token(self.class_embedding, x.shape[0]).to(x.dtype), x], dim=1
         )
-        x = x + self.positional_embedding.to(
+        x = x + self.interpolate_pos_encoding(x, w=w, h=h).to(
             x.dtype
         )  # shape = [*, grid ** 2 + 1, width]
 

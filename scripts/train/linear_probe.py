@@ -140,7 +140,7 @@ def main():
             drop_last=False,
         )
         .with_epoch(ONE_EPOCH_TRAIN)
-        .with_length(ONE_EPOCH_TRAIN)
+        .with_length(ONE_EPOCH_TRAIN, silent=True)
     )
 
     data_loader_val = (
@@ -152,7 +152,7 @@ def main():
             drop_last=False,
         )
         .with_epoch(ONE_EPOCH_VAL)
-        .with_length(ONE_EPOCH_VAL)
+        .with_length(ONE_EPOCH_VAL, silent=True)
     )
 
     model = TiTok.from_pretrained(config.pretrained_model_name_or_path)
@@ -169,12 +169,12 @@ def main():
 
     # Change model's forwarding to only use encoder and the new linear layer
     def forward_linear_probe(x):
-        z_quantized, result_dict = model.encode(x)  # B, 12, 1, 128
+        z_quantized, result_dict = model.module.encode(x)  # B, 12, 1, 128
 
         # Global pooling, not sure if this is working as intended, might need more testing
         pooled = z_quantized.mean(dim=-1).squeeze_(-1)
 
-        return model.head(pooled)
+        return model.module.head(pooled)
 
     model.forward = forward_linear_probe
 
