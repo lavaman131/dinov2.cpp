@@ -10,6 +10,9 @@ import copy
 import torch
 import torch.distributed as dist
 import torch.amp
+import random
+import numpy as np
+import torch.backends.cudnn as cudnn
 
 TORCH_MAJOR = int(torch.__version__.split(".")[0])
 TORCH_MINOR = int(torch.__version__.split(".")[1])
@@ -18,6 +21,17 @@ if TORCH_MAJOR == 1 and TORCH_MINOR < 8:
     from torch._six import inf
 else:
     from torch import inf
+
+
+def set_seed(
+    seed: int,
+) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    cudnn.benchmark = True
+    os.environ["WDS_SEED"] = str(seed)
 
 
 class SmoothedValue(object):
@@ -353,39 +367,41 @@ def add_weight_decay(model, weight_decay=1e-5, skip_list=()):
     ]
 
 
-def save_model(
-    args,
-    epoch,
-    model,
-    model_without_ddp,
-    optimizer,
-    loss_scaler,
-    ema_params=None,
-    epoch_name=None,
-):
-    if epoch_name is None:
-        epoch_name = str(epoch)
+def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler):
     output_dir = Path(args.output_dir)
+    epoch_name = str(epoch)
     checkpoint_path = output_dir / ("checkpoint-%s.pth" % epoch_name)
-
-    # ema
-    if ema_params is not None:
-        ema_state_dict = copy.deepcopy(model_without_ddp.state_dict())
-        for i, (name, _value) in enumerate(model_without_ddp.named_parameters()):
-            assert name in ema_state_dict
-            ema_state_dict[name] = ema_params[i]
-    else:
-        ema_state_dict = None
-
     to_save = {
         "model": model_without_ddp.state_dict(),
-        "model_ema": ema_state_dict,
         "optimizer": optimizer.state_dict(),
         "epoch": epoch,
-        "scaler": loss_scaler.state_dict(),
         "args": args,
     }
+    if loss_scaler is not None:
+        to_save["scaler"] = loss_scaler.state_dict()
     save_on_master(to_save, checkpoint_path)
+
+
+def load_model(args, model_without_ddp, optimizer, loss_scaler):
+    if args.resume:
+        if args.resume.startswith("https"):
+            checkpoint = torch.hub.load_state_dict_from_url(
+                args.resume, map_location="cpu", check_hash=True
+            )
+        else:
+            checkpoint = torch.load(args.resume, map_location="cpu")
+        model_without_ddp.load_state_dict(checkpoint["model"])
+        print("Resume checkpoint %s" % args.resume)
+        if (
+            "optimizer" in checkpoint
+            and "epoch" in checkpoint
+            and not (hasattr(args, "eval") and args.eval)
+        ):
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            args.start_epoch = checkpoint["epoch"] + 1
+            if "scaler" in checkpoint:
+                loss_scaler.load_state_dict(checkpoint["scaler"])
+            print("With optim & sched!")
 
 
 def all_reduce_mean(x):

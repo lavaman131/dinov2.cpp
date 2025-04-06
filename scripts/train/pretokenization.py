@@ -33,6 +33,7 @@ import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
+from efficient_cv.data.imagenet import NUM_IMAGENET_TRAIN_SAMPLES
 from efficient_cv.utils.train import PretrainedTokenizer
 import efficient_cv.utils.misc as misc
 from tqdm.auto import tqdm
@@ -136,15 +137,11 @@ def main():
 
     # fix the seed for reproducibility
     seed = args.seed + misc.get_rank()
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-    cudnn.benchmark = True
+    misc.set_seed(seed)
 
     num_tasks = misc.get_world_size()
     global_rank = misc.get_rank()
 
-    NUM_IMAGENET_TRAIN_SAMPLES = 1_281_167
     GLOBAL_BATCH_SIZE = args.batch_size * num_tasks
     ONE_EPOCH = math.ceil(
         NUM_IMAGENET_TRAIN_SAMPLES / (GLOBAL_BATCH_SIZE * args.num_workers)

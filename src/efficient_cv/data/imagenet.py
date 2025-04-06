@@ -1,5 +1,8 @@
 from typing import Final, Dict
 
+NUM_IMAGENET_TRAIN_SAMPLES: Final[int] = 1_281_167
+NUM_IMAGENET_VAL_SAMPLES: Final[int] = 50_000
+
 imagenet_idx2classname: Final[Dict[int, str]] = {
     0: "tench, Tinca tinca",
     1: "goldfish, Carassius auratus",

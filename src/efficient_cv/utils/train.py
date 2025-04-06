@@ -46,7 +46,7 @@ from efficient_cv.models.layers import (
 from efficient_cv.models.titok import TiTok, PretrainedTokenizer
 from efficient_cv.models.maskgit import ImageBert, UViTBert
 
-from efficient_cv.data.imagenet_classes import imagenet_idx2classname
+from efficient_cv.data.imagenet import imagenet_idx2classname
 from efficient_cv.utils.viz import (
     make_viz_from_samples,
     make_viz_from_samples_generation,
@@ -743,7 +743,7 @@ def train_one_epoch(
             autoencoder_logs = {}
             for k, v in loss_dict.items():
                 if k in ["discriminator_factor", "d_weight"]:
-                    if type(v) == torch.Tensor:
+                    if isinstance(v, torch.Tensor):
                         autoencoder_logs["train/" + k] = v.cpu().item()
                     else:
                         autoencoder_logs["train/" + k] = v
@@ -789,7 +789,7 @@ def train_one_epoch(
                 # Gather the losses across all processes for logging.
                 for k, v in loss_dict_discriminator.items():
                     if k in ["logits_real", "logits_fake"]:
-                        if type(v) == torch.Tensor:
+                        if isinstance(v, torch.Tensor):
                             discriminator_logs["train/" + k] = v.cpu().item()
                         else:
                             discriminator_logs["train/" + k] = v

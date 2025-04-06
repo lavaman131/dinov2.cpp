@@ -202,7 +202,9 @@ class TiTok(
                 result_dict["commitment_loss"] *= 0
                 result_dict["codebook_loss"] *= 0
         else:
-            z = self.encoder(pixel_values=x, latent_tokens=self.latent_tokens)
+            z = self.encoder(
+                pixel_values=x, latent_tokens=self.latent_tokens
+            )  # batch_size, self.token_size, 1, self.num_latent_tokens
             if self.quantize_mode == "vq":
                 z_quantized, result_dict = self.quantize(z)
             elif self.quantize_mode == "vae":
