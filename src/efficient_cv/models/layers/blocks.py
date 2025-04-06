@@ -319,8 +319,8 @@ class TiTokEncoder(nn.Module):
         if npatch == N and w == h:
             return self.positional_embedding
         pos_embed = self.positional_embedding.float()
-        class_pos_embed = pos_embed[:, 0]
-        patch_pos_embed = pos_embed[:, 1:]
+        class_pos_embed = pos_embed[0]  # D
+        patch_pos_embed = pos_embed[1:]  # N-1, D
         dim = x.shape[-1]
         w0 = w // self.patch_size
         h0 = h // self.patch_size
@@ -332,19 +332,19 @@ class TiTokEncoder(nn.Module):
             # Note: still needed for backward-compatibility, the underlying operators are using both output size and scale factors
             sx = float(w0 + self.interpolate_offset) / M
             sy = float(h0 + self.interpolate_offset) / M
-            kwargs["scale_factor"] = (sx, sy)
+            kwargs["scale_factor"] = (sy, sx)
         else:
             # Simply specify an output size instead of a scale factor
-            kwargs["size"] = (w0, h0)
+            kwargs["size"] = (h0, w0)
         patch_pos_embed = F.interpolate(
             patch_pos_embed.reshape(1, M, M, dim).permute(0, 3, 1, 2),
             mode="bicubic",
             antialias=self.interpolate_antialias,
             **kwargs,
         )
-        assert (w0, h0) == patch_pos_embed.shape[-2:]
-        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
-        return torch.cat((class_pos_embed.unsqueeze(0), patch_pos_embed), dim=1).to(
+        assert (h0, w0) == patch_pos_embed.shape[-2:]
+        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(-1, dim)
+        return torch.cat((class_pos_embed.unsqueeze(0), patch_pos_embed), dim=0).to(
             previous_dtype
         )
 
@@ -355,6 +355,7 @@ class TiTokEncoder(nn.Module):
         x = self.patch_embed(x)
         x = x.reshape(x.shape[0], x.shape[1], -1)
         x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+        num_patches = x.shape[1]
         # class embeddings and positional embeddings
         x = torch.cat(
             [_expand_token(self.class_embedding, x.shape[0]).to(x.dtype), x], dim=1
@@ -375,7 +376,7 @@ class TiTokEncoder(nn.Module):
             x = self.transformer[i](x)
         x = x.permute(1, 0, 2)  # LND -> NLD
 
-        latent_tokens = x[:, 1 + self.grid_size**2 :]
+        latent_tokens = x[:, 1 + num_patches :]
         latent_tokens = self.ln_post(latent_tokens)
         # fake 2D shape
         if self.is_legacy:

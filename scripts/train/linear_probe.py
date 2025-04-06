@@ -156,12 +156,12 @@ def main():
     )
 
     model = TiTok.from_pretrained(config.pretrained_model_name_or_path)
-    output_tokens = model.num_latent_tokens
+    embed_dim = model.config.model.vq_model.token_size
 
     # For linear probing, modify model's head to have linear layer, batch norm also used by MAE
     model.head = torch.nn.Sequential(
-        torch.nn.BatchNorm1d(output_tokens, affine=False, eps=1e-6),
-        torch.nn.Linear(output_tokens, config.nb_classes),
+        torch.nn.BatchNorm1d(embed_dim, affine=False, eps=1e-6),
+        torch.nn.Linear(embed_dim, config.nb_classes),
     )
 
     # manually initialize fc layer: following MoCo v3
