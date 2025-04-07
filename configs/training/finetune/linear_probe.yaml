@@ -6,7 +6,7 @@ wandb_project: "eff-cv"
 base_dir: "/projectnb/dl4ds/students/alavaee/outputs"
 
 # Training parameters
-batch_size: 512 # Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus)
+batch_size: 4096 # Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus)
 epochs: 90
 accum_iter: 1 # Accumulate gradient iterations (for increasing the effective batch size under memory constraints)
 

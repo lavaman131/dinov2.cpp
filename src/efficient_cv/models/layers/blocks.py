@@ -348,6 +348,27 @@ class TiTokEncoder(nn.Module):
             previous_dtype
         )
 
+    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        h, w = x.shape[-2:]
+        x = self.patch_embed(x)
+        x = x.reshape(x.shape[0], x.shape[1], -1)
+        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+        # num_patches = x.shape[1]
+        # class embeddings and positional embeddings
+        x = torch.cat(
+            [_expand_token(self.class_embedding, x.shape[0]).to(x.dtype), x], dim=1
+        )
+        x = x + self.interpolate_pos_encoding(x, w=w, h=h).to(
+            x.dtype
+        )  # shape = [*, grid ** 2 + 1, width]
+
+        x = self.ln_pre(x)
+        x = x.permute(1, 0, 2)  # NLD -> LND
+        for i in range(self.num_layers):
+            x = self.transformer[i](x)
+        x = x.permute(1, 0, 2)  # LND -> NLD
+        return x
+
     def forward(self, pixel_values, latent_tokens):
         batch_size = pixel_values.shape[0]
         x = pixel_values

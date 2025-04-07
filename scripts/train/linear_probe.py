@@ -9,6 +9,7 @@ from pathlib import Path
 from omegaconf import OmegaConf
 import webdataset as wds
 import torch
+import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from efficient_cv.utils.train import get_config
@@ -165,8 +166,10 @@ def main():
         .with_length(ONE_EPOCH_VAL, silent=True)
     )
 
-    model = TiTok.from_pretrained(config.pretrained_model_name_or_path)
-    embed_dim = model.config.model.vq_model.token_size
+    model = TiTok.from_pretrained(config.pretrained_model_name_or_path).encoder
+    embed_dim = model.width
+
+    model.fc_norm = nn.LayerNorm(embed_dim, eps=1e-6)
 
     # For linear probing, modify model's head to have linear layer, batch norm also used by MAE
     model.head = torch.nn.Sequential(
@@ -178,15 +181,16 @@ def main():
     trunc_normal_(model.head[1].weight, std=0.01)
 
     # Change model's forwarding to only use encoder and the new linear layer
-    def forward_linear_probe(x):
-        z_quantized, result_dict = model.module.encode(x)  # B, 12, 1, 128
+    def forward(x):
+        output = model.module.forward_features(x)  # NLD
 
-        # Global pooling, not sure if this is working as intended, might need more testing
-        pooled = z_quantized.mean(dim=-1).squeeze_(-1)
+        cls_token, patch_tokens = output[:, 0], output[:, 1:]
+        inp = patch_tokens.mean(dim=1)
+        outcome = model.module.fc_norm(inp)
 
-        return model.module.head(pooled)
+        return model.module.head(outcome)
 
-    model.forward = forward_linear_probe
+    model.forward = forward
 
     # Freeze all layers besides the head
     for _, p in model.named_parameters():
