@@ -5,7 +5,7 @@
 #$ -l gpus=2
 #$ -l gpu_memory=40G
 #$ -N linear_probe
-#$ -pe omp 4
+#$ -pe omp 5
 #$ -j y # Merge the error and output streams into a single file
 
 module load cmake ffmpeg gcc/10.2.0 llvm/9.0.1 miniconda openmpi cuda/11.8

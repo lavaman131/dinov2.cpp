@@ -41,7 +41,7 @@ eval: false # Perform evaluation only
 dist_eval: false # Enabling distributed evaluation (recommended during training for faster monitor)
 
 # DataLoader parameters
-num_workers: 4
+num_workers: 2
 pin_mem: true # Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU
 
 # Distributed training parameters
