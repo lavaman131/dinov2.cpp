@@ -199,6 +199,8 @@ def main():
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
         drop_last=False,
+        shuffle=False,
+        persistent_workers=True,
     ).with_epoch(ONE_EPOCH)
 
     if global_rank == 0:

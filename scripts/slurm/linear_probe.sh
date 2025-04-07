@@ -4,7 +4,7 @@
 #$ -l h_rt=48:00:00
 #$ -l gpus=2
 #$ -l gpu_memory=40G
-#$ -N pretokenization
+#$ -N linear_probe
 #$ -pe omp 4
 #$ -j y # Merge the error and output streams into a single file
 

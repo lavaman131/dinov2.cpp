@@ -149,6 +149,8 @@ def main():
             num_workers=config.num_workers,
             pin_memory=config.pin_mem,
             drop_last=False,
+            shuffle=False,
+            persistent_workers=True,
         )
         .with_epoch(ONE_EPOCH_TRAIN)
         .with_length(ONE_EPOCH_TRAIN, silent=True)
@@ -161,6 +163,8 @@ def main():
             num_workers=config.num_workers,
             pin_memory=config.pin_mem,
             drop_last=False,
+            shuffle=False,
+            persistent_workers=False,
         )
         .with_epoch(ONE_EPOCH_VAL)
         .with_length(ONE_EPOCH_VAL, silent=True)

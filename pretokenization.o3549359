@@ -1,0 +1,121 @@
+==========================================================
+Start date : Mon Apr  7 00:21:56 EDT 2025
+Job name : pretokenization
+Job ID : 3549359
+Host : 
+==========================================================
+attention mode is flash
+attention mode is flash
+| distributed init (rank 1): env://, gpu 1
+| distributed init (rank 0): env://, gpu 0
+[00:22:45.788311] job dir: /projectnb/dl4ds/students/alavaee/efficient-cv/scripts/train
+[00:22:45.788413] {'pretrained_model_name_or_path': 'yucornetto/tokenizer_titok_s128_imagenet',
+'experiment_name': 'linear_probe_titok_s128_imagenet',
+'wandb_entity': 'artificial-intelligence-research',
+'wandb_project': 'eff-cv',
+'base_dir': '/projectnb/dl4ds/students/alavaee/outputs',
+'batch_size': 4096,
+'epochs': 90,
+'accum_iter': 1,
+'weight_decay': 0,
+'lr': None,
+'blr': 0.1,
+'min_lr': 0.0,
+'warmup_epochs': 10,
+'finetune': '',
+'data_path': '/projectnb/dl4ds/materials/datasets/imagenet',
+'train_pattern': 'imagenet-train-{000000..000319}.tar',
+'val_pattern': 'imagenet-val-{000000..000049}.tar',
+'nb_classes': 1000,
+'output_dir': '${base_dir}/${experiment_name}',
+'log_dir': '${base_dir}/${experiment_name}',
+'device': 'cuda',
+'seed': 0,
+'resume': '',
+'start_epoch': 0,
+'eval': False,
+'dist_eval': False,
+'num_workers': 4,
+'pin_mem': True,
+'world_size': 2,
+'local_rank': -1,
+'dist_on_itp': False,
+'dist_url': 'env://',
+'config': 'configs/training/finetune/linear_probe.yaml',
+'rank': 0,
+'gpu': 0,
+'distributed': True,
+'dist_backend': 'nccl'}
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Currently logged in as: lavaalex to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.19.8
+wandb: Run data is saved locally in /projectnb/dl4ds/students/alavaee/efficient-cv/wandb/run-20250407_002246-xxbr6ey3
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run linear_probe_titok_s128_imagenet
+wandb: ⭐️ View project at https://wandb.ai/artificial-intelligence-research/eff-cv
+wandb: 🚀 View run at https://wandb.ai/artificial-intelligence-research/eff-cv/runs/xxbr6ey3
+[00:22:47.773823] Creating WebDataset loaders: /projectnb/dl4ds/materials/datasets/imagenet/imagenet-train-{000000..000319}.tar and /projectnb/dl4ds/materials/datasets/imagenet/imagenet-val-{000000..000049}.tar
+[00:22:54.916777] Model = TiTokEncoder(
+  (patch_embed): Conv2d(3, 512, kernel_size=(16, 16), stride=(16, 16))
+  (ln_pre): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+  (transformer): ModuleList(
+    (0-7): 8 x ResidualAttentionBlock(
+      (ln_1): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      (attn): MultiheadAttention(
+        (out_proj): NonDynamicallyQuantizableLinear(in_features=512, out_features=512, bias=True)
+      )
+      (ln_2): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+      (mlp): Sequential(
+        (c_fc): Linear(in_features=512, out_features=2048, bias=True)
+        (gelu): GELU(approximate='none')
+        (c_proj): Linear(in_features=2048, out_features=512, bias=True)
+      )
+    )
+  )
+  (ln_post): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+  (conv_out): Conv2d(512, 12, kernel_size=(1, 1), stride=(1, 1))
+  (fc_norm): LayerNorm((512,), eps=1e-06, elementwise_affine=True)
+  (head): Sequential(
+    (0): BatchNorm1d(512, eps=1e-06, momentum=0.1, affine=False, track_running_stats=True)
+    (1): Linear(in_features=512, out_features=1000, bias=True)
+  )
+)
+[00:22:54.917129] number of params (M): 0.51
+[00:22:54.917373] base lr: 1.00e-01
+[00:22:54.917487] actual lr: 3.20e+00
+[00:22:54.917578] accumulate grad iterations: 1
+[00:22:54.917655] effective batch size: 8192
+[00:22:54.999272] LARS (
+Parameter Group 0
+    lr: 3.2
+    momentum: 0.9
+    trust_coefficient: 0.001
+    weight_decay: 0
+)
+[00:22:54.999617] criterion = CrossEntropyLoss()
+[00:22:54.999759] Start training for 90 epochs
+[00:23:24.843162] Epoch: [0]  [ 0/40]  eta: 0:19:53  lr: 0.000000  loss: 6.9316 (6.9316)  time: 29.8415  data: 24.9864  max mem: 14284
+[00:24:53.899457] Epoch: [0]  [20/40]  eta: 0:01:53  lr: 0.160000  loss: 6.9291 (6.9304)  time: 4.4528  data: 1.7759  max mem: 14302
+[00:26:13.092588] Epoch: [0]  [39/40]  eta: 0:00:04  lr: 0.312000  loss: 6.9008 (6.9162)  time: 4.7874  data: 0.6745  max mem: 14302
+[00:26:30.021840] Epoch: [0] Total time: 0:03:35 (5.3755 s / it)
+[00:26:30.023639] Averaged stats: lr: 0.312000  loss: 6.9008 (6.9170)
+[00:26:55.674689] Test:  [0/2]  eta: 0:00:50  loss: 6.8821 (6.8821)  acc1: 0.1221 (0.1221)  acc5: 0.9521 (0.9521)  time: 25.4863  data: 24.5343  max mem: 14302
+[00:26:56.538895] Test:  [1/2]  eta: 0:00:13  loss: 6.8821 (6.8831)  acc1: 0.1221 (0.1709)  acc5: 0.7324 (0.8423)  time: 13.1747  data: 12.2673  max mem: 14302
+[00:27:15.391103] Test: Total time: 0:00:45 (22.6016 s / it)
+[00:27:15.392634] * Acc@1 0.171 Acc@5 0.842 loss 6.883
+[00:27:15.392830] Accuracy of the network on the 50000 test images: 0.2%
+[00:27:15.392913] Max accuracy: 0.17%
+[00:27:37.222938] Epoch: [1]  [ 0/40]  eta: 0:14:33  lr: 0.320000  loss: 6.8796 (6.8796)  time: 21.8267  data: 18.0280  max mem: 14302
+[00:29:11.185972] Epoch: [1]  [20/40]  eta: 0:01:50  lr: 0.480000  loss: 6.8458 (6.8427)  time: 4.6981  data: 2.6862  max mem: 14302
+[00:30:31.286599] Epoch: [1]  [39/40]  eta: 0:00:04  lr: 0.632000  loss: 6.7661 (6.8073)  time: 4.7621  data: 1.5396  max mem: 14302
+[00:30:39.432458] Epoch: [1] Total time: 0:03:24 (5.1009 s / it)
+[00:30:44.595563] Averaged stats: lr: 0.632000  loss: 6.7661 (6.8071)
+[00:31:08.572367] Test:  [0/2]  eta: 0:00:47  loss: 6.7203 (6.7203)  acc1: 1.0254 (1.0254)  acc5: 3.5156 (3.5156)  time: 23.8382  data: 22.9733  max mem: 14302
+[00:31:09.439374] Test:  [1/2]  eta: 0:00:12  loss: 6.7203 (6.7231)  acc1: 1.0254 (1.0376)  acc5: 3.5156 (3.5156)  time: 12.3522  data: 11.4867  max mem: 14302
+[00:31:27.047010] Test: Total time: 0:00:42 (21.1567 s / it)
+[00:31:28.161821] * Acc@1 1.038 Acc@5 3.516 loss 6.723
+[00:31:28.162470] Accuracy of the network on the 50000 test images: 1.0%
+[00:31:28.162557] Max accuracy: 1.04%
+[00:31:50.252201] Epoch: [2]  [ 0/40]  eta: 0:14:43  lr: 0.640000  loss: 6.7160 (6.7160)  time: 22.0859  data: 20.9110  max mem: 14302
+[00:33:29.212565] Epoch: [2]  [20/40]  eta: 0:01:55  lr: 0.800000  loss: 6.6768 (6.6827)  time: 4.9480  data: 3.7332  max mem: 14302
+[00:34:54.673149] Epoch: [2]  [39/40]  eta: 0:00:05  lr: 0.952000  loss: 6.5973 (6.6432)  time: 5.1675  data: 3.7025  max mem: 14302
