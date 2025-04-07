@@ -83,6 +83,7 @@ def main():
             config=config_dict,  # type: ignore
             init_kwargs={
                 "wandb": {
+                    "project": config.experiment.wandb_project,
                     "entity": config.experiment.wandb_entity,
                 }
             },

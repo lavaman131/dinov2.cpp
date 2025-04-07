@@ -2,6 +2,7 @@ experiment:
   project: "titok_b_64_stage1"
   name: "titok_b_64_stage1_run1"
   wandb_entity: "artificial-intelligence-research"
+  wandb_project: "eff-cv"
   output_dir: "titok_b_64_stage1_run1"
   max_train_examples: 1_281_167
   save_every: 50_000

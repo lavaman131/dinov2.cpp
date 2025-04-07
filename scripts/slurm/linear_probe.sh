@@ -28,3 +28,13 @@ RDZV_BACKEND="c10d"
 RDZV_ENDPOINT="$MASTER_ADDR:$MASTER_PORT"
 NODE_RANK=0 # rank of the node
 
+torchrun \
+    --nnodes 1 \
+    --nproc_per_node 2 \
+    --node_rank $NODE_RANK \
+    --rdzv-id $RDZV_ID \
+    --rdzv-backend $RDZV_BACKEND \
+    --rdzv-endpoint $RDZV_ENDPOINT \
+    ./scripts/train/linear_probe.py \
+    config=configs/training/finetune/linear_probe.yaml
+

@@ -90,7 +90,8 @@ def main():
         os.makedirs(config.log_dir, exist_ok=True)
         config_dict = OmegaConf.to_container(config, resolve=True)
         run = wandb.init(
-            project=config.experiment_name,
+            name=config.experiment_name,
+            project=config.wandb_project,
             entity=config.wandb_entity,
             config=config_dict,  # type: ignore
         )
@@ -124,7 +125,7 @@ def main():
         nodesplitter=wds.split_by_node
         if (num_tasks > 1 and config.dist_eval)
         else None,
-    )
+    ).with_length(NUM_IMAGENET_VAL_SAMPLES, silent=True)
     dataset_val = dataset_val.decode("pil").map(transform_val_sample)
     dataset_val = dataset_val.batched(config.batch_size)
 
