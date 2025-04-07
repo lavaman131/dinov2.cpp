@@ -6,11 +6,13 @@ import numpy as np
 import os
 import time
 from pathlib import Path
+from omegaconf import OmegaConf
 import webdataset as wds
 import torch
 import torch.backends.cudnn as cudnn
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from efficient_cv.utils.train import get_config
+import wandb
 
 # from torch.utils.tensorboard import SummaryWriter
 import torchvision.transforms as transforms
@@ -83,8 +85,15 @@ def main():
     global_rank = misc.get_rank()
 
     log_writer = None
+    run = None
     if global_rank == 0 and config.log_dir is not None and not config.eval:
         os.makedirs(config.log_dir, exist_ok=True)
+        config_dict = OmegaConf.to_container(config, resolve=True)
+        run = wandb.init(
+            project=config.experiment_name,
+            entity=config.wandb_entity,
+            config=config_dict,  # type: ignore
+        )
         # log_writer = SummaryWriter(log_dir=config.log_dir) # Don't have tensorboard
 
     # WebDataset transformations
@@ -269,6 +278,16 @@ def main():
             log_writer.add_scalar("perf/test_acc1", test_stats["acc1"], epoch)
             log_writer.add_scalar("perf/test_acc5", test_stats["acc5"], epoch)
             log_writer.add_scalar("perf/test_loss", test_stats["loss"], epoch)
+
+        if run is not None:
+            run.log(
+                {
+                    "epoch": epoch,
+                    "test_acc1": test_stats["acc1"],
+                    "test_acc5": test_stats["acc5"],
+                    "test_loss": test_stats["loss"],
+                }
+            )
 
         log_stats = {
             **{f"train_{k}": v for k, v in train_stats.items()},

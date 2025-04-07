@@ -1,4 +1,9 @@
 pretrained_model_name_or_path: "yucornetto/tokenizer_titok_s128_imagenet" # pretrained model name or path
+experiment_name: "linear_probe_titok_s128_imagenet"
+wandb_entity: "artificial-intelligence-research"
+
+base_dir: "/projectnb/dl4ds/students/alavaee/outputs"
+
 # Training parameters
 batch_size: 512 # Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus)
 epochs: 90
@@ -21,8 +26,8 @@ val_pattern: "imagenet-val-{000000..000049}.tar" # WebDataset val pattern
 nb_classes: 1000 # Number of the classification types
 
 # Output parameters
-output_dir: "./output_dir" # Path where to save, empty for no saving
-log_dir: "./output_dir" # Path where to tensorboard log
+output_dir: "${base_dir}/${experiment_name}" # Path where to save, empty for no saving
+log_dir: "${base_dir}/${experiment_name}" # Path where to tensorboard log
 device: "cuda" # Device to use for training / testing
 seed: 0
 

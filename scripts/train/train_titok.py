@@ -27,6 +27,7 @@ from accelerate import Accelerator
 
 import torch
 from omegaconf import OmegaConf
+from wandb import init
 from efficient_cv.utils.logger import setup_logger
 
 from efficient_cv.utils.train import (
@@ -82,7 +83,16 @@ def main():
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
     if accelerator.is_main_process:
-        accelerator.init_trackers(config.experiment.name)
+        config_dict = OmegaConf.to_container(config, resolve=True)
+        accelerator.init_trackers(
+            config.experiment.name,
+            config=config_dict,  # type: ignore
+            init_kwargs={
+                "wandb": {
+                    "entity": config.experiment.wandb_entity,
+                }
+            },
+        )
         config_path = Path(output_dir) / "config.yaml"
         logger.info(f"Saving config to {config_path}")
         OmegaConf.save(config, config_path)
