@@ -1,0 +1,35 @@
+[project]
+name = "dinov2_inference"
+version = "0.0.1"
+description = "A library for efficient computer vision on edge devices."
+authors = [
+    { name = "Michael Krah", email = "mickra@bu.edu" },
+    { name = "Zach Gentile", email = "zgentile@bu.edu" },
+    { name = "Alex Lavaee", email = "alavaee@bu.edu" },
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["torch", "timm"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dinov2_inference"]
+namespaces = true
+
+[tool.uv.sources]
+torch = [
+    { index = "torch-cpu", extra = "cpu" },
+    { index = "torch-gpu", extra = "gpu" },
+]
+
+[[tool.uv.index]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+
+[[tool.uv.index]]
+name = "torch-gpu"
+url = "https://download.pytorch.org/whl/cu124"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

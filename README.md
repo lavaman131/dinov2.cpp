@@ -100,21 +100,22 @@ The implemented architecture is based on the original Vision Transformer from:
 
 ## Convert PyTorch to GGUF
 
+```bash
+# clone the repo recursively
+git clone --recurse-submodules git@github.com:lavaman131/dinov2.cpp.git
 
-    # clone the repo recursively
-    git clone --recurse-submodules https://github.com/staghado/vit.cpp.git
+cd dinov2.cpp
 
-    cd vit.cpp
+uv venv
+uv sync
 
-    # install torch and timm
-    pip install torch timm
+# list available models if needed; note that not all models are supported
+python convert-pth-to-ggml.py --list
 
-    # list available models if needed; note that not all models are supported
-    python convert-pth-to-ggml.py --list
-
-    # convert the weights to gguf : vit tiny with patch size of 16 and an image 
-    # size of 384 pre-trained on ImageNet21k and fine-tuned on ImageNet1k
-    python convert-pth-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_in1k --ftype 1
+# convert the weights to gguf : vit tiny with patch size of 16 and an image 
+# size of 384 pre-trained on ImageNet21k and fine-tuned on ImageNet1k
+python convert-pth-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_in1k --ftype 1
+```
 
 > **Note:** You can also download the converted weights from [Hugging Face](https://huggingface.co/staghado/vit.cpp) directly.
 
@@ -126,13 +127,14 @@ The implemented architecture is based on the original Vision Transformer from:
 
 ### Simple build
 
+```bash
+# build ggml and vit 
+mkdir build && cd build
+cmake .. && make -j4
 
-    # build ggml and vit 
-    mkdir build && cd build
-    cmake .. && make -j4
-
-    # run inference
-    ./bin/vit -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+# run inference
+./bin/vit -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```
 
 The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of threads equal to the number of available physical cores gives the best performance in terms of speed.
 
@@ -160,22 +162,24 @@ Note : For my AMD Ryzen 7 3700U, the improvements were not very significant but 
 Additionally compile with OpenMP by specifying the `-fopenmp` flag to the compiler in the CMakeLists file,
 allowing multithreaded runs. Make sure to also enable multiple threads when running, e.g.:
 
-    OMP_NUM_THREADS=4 ./bin/vit -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
+```bash
+OMP_NUM_THREADS=4 ./bin/vit -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
+```
 
 ## Run
 
+```bash
+usage: ./bin/vit [options]
 
-    usage: ./bin/vit [options]
-
-    options:
-      -h, --help              show this help message and exit
-      -s SEED, --seed SEED    RNG seed (default: -1)
-      -t N, --threads N       number of threads to use during computation (default: 4)
-      -m FNAME, --model FNAME model path (default: ../ggml-model-f16.bin)
-      -i FNAME, --inp FNAME   input file (default: ../assets/tench.jpg)
-      -k N, --topk N          top k classes to print (default: 5)
-      -e FLOAT, --epsilon     epsilon (default: 0.000001)
-
+options:
+    -h, --help              show this help message and exit
+    -s SEED, --seed SEED    RNG seed (default: -1)
+    -t N, --threads N       number of threads to use during computation (default: 4)
+    -m FNAME, --model FNAME model path (default: ../ggml-model-f16.bin)
+    -i FNAME, --inp FNAME   input file (default: ../assets/tench.jpg)
+    -k N, --topk N          top k classes to print (default: 5)
+    -e FLOAT, --epsilon     epsilon (default: 0.000001)
+```
 
 ## Benchmark against PyTorch
 
@@ -203,19 +207,21 @@ Using 4 threads gives better results for my machine. The reported results of inf
 
 In order to test the inference speed on your machine, you can run the following scripts:
 
-    chmod +x scripts/benchmark.*
+```bash
+chmod +x scripts/benchmark.*
 
-    # install memory_profiler & threadpoolctl
-    pip install memory_profiler threadpoolctl
+# install memory_profiler & threadpoolctl
+pip install memory_profiler threadpoolctl
 
-    # run the benchmark of PyTorch
-    python scripts/benchmark.py
+# run the benchmark of PyTorch
+python scripts/benchmark.py
 
-    # run the benchmark of vit.cpp for non-qunatized model
-    ./scripts/benchmark.sh
+# run the benchmark of vit.cpp for non-qunatized model
+./scripts/benchmark.sh
 
-    # to run the benchamrk for qunatized models; 4 threads and quantize flag
-    ./scripts/benchmark.sh 4 1
+# to run the benchamrk for qunatized models; 4 threads and quantize flag
+./scripts/benchmark.sh 4 1
+```
 
 Both scripts use 4 threads by default. In Python, the `threadpoolctl` library is used to limit the number of threads used by PyTorch.
 
