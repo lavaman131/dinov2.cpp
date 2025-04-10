@@ -107,7 +107,8 @@ git clone --recurse-submodules git@github.com:lavaman131/dinov2.cpp.git
 cd dinov2.cpp
 
 uv venv
-uv sync
+source .venv/bin/activate
+uv sync --frozen
 
 # list available models if needed; note that not all models are supported
 python convert-pth-to-ggml.py --list
