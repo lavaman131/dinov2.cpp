@@ -489,3 +489,4 @@ TSWLatexianTemp*
 #*Notes.bib
 
 *.bin
+*.gguf
