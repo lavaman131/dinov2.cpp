@@ -131,7 +131,7 @@ python convert-pth-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_
 ```bash
 # build ggml and vit 
 mkdir build && cd build
-cmake .. && make -j4
+cmake .. && make -j 4
 
 # run inference
 ./bin/vit -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
