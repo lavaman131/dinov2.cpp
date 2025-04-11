@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(vit
+project(dinov2
         DESCRIPTION "Inference Vision Transformer (ViT) in plain C/C++ with ggml"
         HOMEPAGE_URL "https://github.com/staghado/vit.cpp")
 
