@@ -490,3 +490,6 @@ TSWLatexianTemp*
 
 *.bin
 *.gguf
+
+.idea/
+cmake-build-debug/
