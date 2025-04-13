@@ -9,7 +9,14 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["torch", "torchvision", "Pillow", "hf_transfer", "transformers[torch]", "memory-profiler", "threadpoolctl"]
+dependencies = [
+    "torch",
+    "torchvision",
+    "Pillow",
+    "transformers[torch]",
+    "memory-profiler",
+    "threadpoolctl",
+]
 
 [tool.uv.pip]
 torch-backend = "auto"

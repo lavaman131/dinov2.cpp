@@ -5,7 +5,7 @@ from torchvision.transforms import v2
 from memory_profiler import memory_usage
 from PIL import Image
 from threadpoolctl import threadpool_limits
-from transformers import AutoModel, AutoConfig
+from transformers import Dinov2ForImageClassification, AutoModel, AutoConfig
 import torch.nn.functional as F
 
 IMAGENET_DEFAULT_MEAN: Final[Sequence[float]] = (0.485, 0.456, 0.406)
@@ -13,8 +13,8 @@ IMAGENET_DEFAULT_STD: Final[Sequence[float]] = (0.229, 0.224, 0.225)
 
 
 def make_normalize_transform(
-        mean: Sequence[float] = IMAGENET_DEFAULT_MEAN,
-        std: Sequence[float] = IMAGENET_DEFAULT_STD,
+    mean: Sequence[float] = IMAGENET_DEFAULT_MEAN,
+    std: Sequence[float] = IMAGENET_DEFAULT_STD,
 ) -> v2.Normalize:
     return v2.Normalize(mean=mean, std=std)
 
@@ -22,12 +22,12 @@ def make_normalize_transform(
 # This matches (roughly) torchvision's preset for classification evaluation:
 #   https://github.com/pytorch/vision/blob/main/references/classification/presets.py#L47-L69
 def make_classification_eval_transform(
-        *,
-        resize_size: int = 256,
-        interpolation=v2.InterpolationMode.BICUBIC,
-        crop_size: int = 224,
-        mean: Sequence[float] = IMAGENET_DEFAULT_MEAN,
-        std: Sequence[float] = IMAGENET_DEFAULT_STD,
+    *,
+    resize_size: int = 256,
+    interpolation=v2.InterpolationMode.BICUBIC,
+    crop_size: int = 224,
+    mean: Sequence[float] = IMAGENET_DEFAULT_MEAN,
+    std: Sequence[float] = IMAGENET_DEFAULT_STD,
 ) -> v2.Compose:
     transforms_list = [
         v2.Resize(resize_size, interpolation=interpolation),
@@ -40,7 +40,7 @@ def make_classification_eval_transform(
 
 
 def process_and_predict(image_path: str, model_path: str) -> torch.Tensor:
-    model = AutoModel.from_pretrained(model_path)
+    model = Dinov2ForImageClassification.from_pretrained(model_path)
     preprocess = make_classification_eval_transform()
 
     image = Image.open(image_path).convert("RGB")
@@ -48,13 +48,15 @@ def process_and_predict(image_path: str, model_path: str) -> torch.Tensor:
     image = image.unsqueeze_(0)
 
     with torch.inference_mode():
-        outputs = model(image)
-        probabilities = F.softmax(outputs, dim=-1)
+        logits = model(image).logits
+        probabilities = F.softmax(logits, dim=-1)
 
     return probabilities
 
 
-def benchmark_model(image_path: str, model_name: str, N: int = 10) -> Tuple[float, float]:
+def benchmark_model(
+    image_path: str, model_name: str, N: int = 10
+) -> Tuple[float, float]:
     times = []
     peak_memory_usages = []
 
@@ -91,13 +93,16 @@ def main() -> None:
 
     # an image
     image_path = "./assets/tench.jpg"
-    with threadpool_limits(limits=4):
-        print("| Model | Speed (ms)   |   Mem (MB)       |")
-        print("|-------|--------------|------------------|")
+    for name, model_name in model_variants.items():
+        model = Dinov2ForImageClassification.from_pretrained(model_name)
 
-        for name, model_name in model_variants.items():
-            avg_time, peak_memory = benchmark_model(image_path, model_name)
-            print(f"| {name} | {avg_time:.0f} | {peak_memory:.0f} |")
+    # with threadpool_limits(limits=4):
+    #     print("| Model | Speed (ms)   |   Mem (MB)       |")
+    #     print("|-------|--------------|------------------|")
+
+    #     for name, model_name in model_variants.items():
+    #         avg_time, peak_memory = benchmark_model(image_path, model_name)
+    #         print(f"| {name} | {avg_time:.0f} | {peak_memory:.0f} |")
 
 
 if __name__ == "__main__":
