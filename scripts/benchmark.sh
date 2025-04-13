@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # arrays
-declare -a models=("tiny" "small" "base" "large")
+declare -a models=("small" "base" "large" "giant")
 declare -a quant_names=("q4_0" "q4_1" "q5_0" "q5_1" "q8_0")
 declare -a quant_ids=(2 3 6 7 8)
 # associative array
@@ -26,8 +26,8 @@ fi
 
 for model in "${models[@]}"; do
     # convert the model to gguf
-    echo "Converting model: vit_${model}_patch16_224.augreg_in21k_ft_in1k"
-    python convert-pth-to-ggml.py --model_name "vit_${model}_patch16_224.augreg_in21k_ft_in1k" --ftype 1 > /dev/null 2>&1
+    echo "Converting model: facebook/dinov2-${model}-imagenet1k-1-layer"
+    python convert-pth-to-ggml.py --model_name "facebook/dinov2-${model}-imagenet1k-1-layer" --ftype 1 > /dev/null 2>&1
 
     cd build/ || exit
 
