@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # arrays
-declare -a models=("small" "base" "large" "giant")
+declare -a models=("tiny" "small" "base" "large")
 declare -a quant_names=("q4_0" "q4_1" "q5_0" "q5_1" "q8_0")
 declare -a quant_ids=(2 3 6 7 8)
 # associative array
@@ -11,7 +11,7 @@ declare -A memory_results
 # defaults
 num_threads=4
 quantize_flag=0 # 0 for no quantization, 1 for quantization
-N=100 # number of times to run each model
+N=10 # number of times to run each model
 
 if [ "$#" -ge 1 ]; then
     echo "num_threads=$1"
@@ -26,8 +26,8 @@ fi
 
 for model in "${models[@]}"; do
     # convert the model to gguf
-    echo "Converting model: facebook/dinov2-${model}-imagenet1k-1-layer"
-    python convert-pth-to-ggml.py --model_name "facebook/dinov2-${model}-imagenet1k-1-layer" --ftype 1 > /dev/null 2>&1
+    echo "Converting model: vit_${model}_patch16_224.augreg_in21k_ft_in1k"
+    python ./scripts/vit-to-ggml.py --model_name "vit_${model}_patch16_224.augreg_in21k_ft_in1k" --ftype 1 > /dev/null 2>&1
 
     cd build/ || exit
 
@@ -44,7 +44,7 @@ for model in "${models[@]}"; do
 
             for ((i=1; i<=N; i++)); do
                 start=$(date +%s%N)
-                /usr/bin/time -f "%M" -o mem.txt ./bin/vit -t $num_threads -m ../ggml-model-f16-quant.gguf -i ../assets/tench.jpg > /dev/null 2>&1
+                /usr/bin/time -f "%M" -o mem.txt ./bin/dinov2 -t $num_threads -m ../ggml-model-f16-quant.gguf -i ../assets/tench.jpg > /dev/null 2>&1
                 end=$(date +%s%N)
                 diff=$((end-start))
                 sum=$((sum+diff))
@@ -67,7 +67,7 @@ for model in "${models[@]}"; do
 
         for ((i=1; i<=N; i++)); do
             start=$(date +%s%N)
-            /usr/bin/time -f "%M" -o mem.txt ./bin/vit -t $num_threads -m ../ggml-model-f16.gguf -i ../assets/tench.jpg > /dev/null 2>&1
+            /usr/bin/time -f "%M" -o mem.txt ./bin/dinov2 -t $num_threads -m ../ggml-model-f16.gguf -i ../assets/tench.jpg > /dev/null 2>&1
             end=$(date +%s%N)
             diff=$((end-start))
             sum=$((sum+diff))

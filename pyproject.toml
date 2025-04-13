@@ -11,6 +11,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "torch",
+    "timm",
     "torchvision",
     "Pillow",
     "transformers[torch]",
