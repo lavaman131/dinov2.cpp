@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnigns on Windows
+#define CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnigns on Windows
 
 #include "vit.h"
 #include "ggml.h"
@@ -28,23 +28,19 @@
 
 // default ViT-B hparams
 // vit_base_patch8_224.augreg2_in21k_ft_in1k from timm
-int32_t vit_hparams::n_enc_head_dim() const
-{
+int32_t vit_hparams::n_enc_head_dim() const {
     return hidden_size / num_attention_heads;
 }
 
-int32_t vit_hparams::n_img_size() const
-{
+int32_t vit_hparams::n_img_size() const {
     return img_size;
 }
 
-int32_t vit_hparams::n_patch_size() const
-{
+int32_t vit_hparams::n_patch_size() const {
     return patch_size;
 }
 
-int32_t vit_hparams::n_img_embd() const
-{
+int32_t vit_hparams::n_img_embd() const {
     return n_img_size() / n_patch_size();
 }
 
@@ -52,53 +48,43 @@ int32_t vit_hparams::n_img_embd() const
 // Helpers
 //
 
-void print_t_f32(const char *title, struct ggml_tensor *t, int n = 10)
-{
+void print_t_f32(const char *title, const struct ggml_tensor *t, const int n = 10) {
     printf("%s\n", title);
-    float *data = (float *)t->data;
+    const auto *data = (float *) (t->data);
     printf("dims: % " PRId64 " % " PRId64 " % " PRId64 " % " PRId64 " f32\n", t->ne[0], t->ne[1], t->ne[2], t->ne[3]);
     printf("First & Last %d elements:\n", n);
-    for (int i = 0; i < std::min((int)(t->ne[0] * t->ne[1]), n); i++)
-    {
+    for (int i = 0; i < std::min((int) (t->ne[0] * t->ne[1]), n); i++) {
         printf("%.5f ", data[i]);
-        if (i != 0 && i % t->ne[0] == 0)
-        {
+        if (i != 0 && i % t->ne[0] == 0) {
             printf("\n");
         }
     }
     printf("\n");
-    for (int i = 0; i < std::min((int)(t->ne[0] * t->ne[1]), n); i++)
-    {
+    for (int i = 0; i < std::min((int) (t->ne[0] * t->ne[1]), n); i++) {
         printf("%.5f ", data[ggml_nelements(t) - n + i]);
-        if ((ggml_nelements(t) - n + i) % t->ne[0] == 0)
-        {
+        if ((ggml_nelements(t) - n + i) % t->ne[0] == 0) {
             printf("\n");
         }
     }
     printf("\n");
     double sum = 0.0;
-    for (int i = 0; i < ggml_nelements(t); i++)
-    {
+    for (int i = 0; i < ggml_nelements(t); i++) {
         sum += data[i];
     }
     printf("sum:  %f\n\n", sum);
 }
 
-static void ggml_disconnect_node_from_graph(ggml_tensor *t)
-{
+static void ggml_disconnect_node_from_graph(ggml_tensor *t) {
     t->op = GGML_OP_NONE;
-    for (int i = 0; i < GGML_MAX_SRC; i++)
-    {
-        t->src[i] = NULL;
+    for (auto &i: t->src) {
+        i = nullptr;
     }
 }
 
-void ggml_graph_compute_helper(std::vector<uint8_t> &buf, ggml_cgraph *graph, int n_threads)
-{
+void ggml_graph_compute_helper(std::vector<uint8_t> &buf, ggml_cgraph *graph, const int n_threads) {
     struct ggml_cplan plan = ggml_graph_plan(graph, n_threads, nullptr);
 
-    if (plan.work_size > 0)
-    {
+    if (plan.work_size > 0) {
         buf.resize(plan.work_size);
         plan.work_data = buf.data();
     }
@@ -107,12 +93,10 @@ void ggml_graph_compute_helper(std::vector<uint8_t> &buf, ggml_cgraph *graph, in
 }
 
 // load image from a file(uses stbi_load)
-bool load_image_from_file(const std::string &fname, image_u8 &img)
-{
+bool load_image_from_file(const std::string &fname, image_u8 &img) {
     int nx, ny, nc;
     auto data = stbi_load(fname.c_str(), &nx, &ny, &nc, 3);
-    if (!data)
-    {
+    if (!data) {
         fprintf(stderr, "%s: failed to load '%s'\n", __func__, fname.c_str());
         return false;
     }
@@ -128,8 +112,7 @@ bool load_image_from_file(const std::string &fname, image_u8 &img)
 }
 
 // preprocess input image : bilinear resize + normalize
-bool vit_image_preprocess_bilinear(const image_u8 &img, image_f32 &res, const vit_hparams &params)
-{
+bool vit_image_preprocess_bilinear(const image_u8 &img, image_f32 &res, const vit_hparams &params) {
     const int nx = img.nx;
     const int ny = img.ny;
 
@@ -139,8 +122,8 @@ bool vit_image_preprocess_bilinear(const image_u8 &img, image_f32 &res, const vi
     res.ny = target_size;
     res.data.resize(3 * target_size * target_size);
 
-    const float x_scale = nx / (float)target_size;
-    const float y_scale = ny / (float)target_size;
+    const float x_scale = nx / (float) target_size;
+    const float y_scale = ny / (float) target_size;
 
     fprintf(stderr, "%s: x_scale = %f, y_scale = %f\n", __func__, x_scale, y_scale);
 
@@ -151,18 +134,15 @@ bool vit_image_preprocess_bilinear(const image_u8 &img, image_f32 &res, const vi
     const float s3[3] = {58.395f, 57.120f, 57.375f};
 
     // #pragma omp parallel for schedule(dynamic)
-    for (int y = 0; y < ny3; y++)
-    {
-        for (int x = 0; x < nx3; x++)
-        {
-            for (int c = 0; c < 3; c++)
-            {
+    for (int y = 0; y < ny3; y++) {
+        for (int x = 0; x < nx3; x++) {
+            for (int c = 0; c < 3; c++) {
                 // linear interpolation
                 const float sx = (x + 0.5f) * x_scale - 0.5f;
                 const float sy = (y + 0.5f) * y_scale - 0.5f;
 
-                const int x0 = std::max(0, (int)std::floor(sx));
-                const int y0 = std::max(0, (int)std::floor(sy));
+                const int x0 = std::max(0, (int) std::floor(sx));
+                const int y0 = std::max(0, (int) std::floor(sy));
 
                 const int x1 = std::min(x0 + 1, nx - 1);
                 const int y1 = std::min(y0 + 1, ny - 1);
@@ -196,14 +176,12 @@ bool vit_image_preprocess_bilinear(const image_u8 &img, image_f32 &res, const vi
     return true;
 }
 
-float clip(float x, float lower, float upper)
-{
+float clip(float x, float lower, float upper) {
     return std::max(lower, std::min(x, upper));
 }
 
 // preprocess input image : bicubic resize + normalize
-bool vit_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const vit_hparams &params)
-{
+bool vit_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const vit_hparams &params) {
     const int nx = img.nx;
     const int ny = img.ny;
 
@@ -222,8 +200,8 @@ bool vit_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const vit
     float dx, dy;
     float tx, ty;
 
-    tx = (float)nx / (float)newWidth;
-    ty = (float)ny / (float)newHeight;
+    tx = (float) nx / (float) newWidth;
+    ty = (float) ny / (float) newHeight;
     printf("newWidth, newHeight = %d, %d\n", newWidth, newHeight);
     printf("tx, ty = %f, %f\n", tx, ty);
     printf("nx, ny = %d, %d\n", nx, ny);
@@ -239,12 +217,10 @@ bool vit_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const vit
     //    -> https://en.wikipedia.org/wiki/Bicubic_interpolation
 
     // #pragma omp parallel for schedule(dynamic)
-    for (i = 0; i < newHeight; i++)
-    {
-        for (j = 0; j < newWidth; j++)
-        {
-            x = (int)(tx * j);
-            y = (int)(ty * i);
+    for (i = 0; i < newHeight; i++) {
+        for (j = 0; j < newWidth; j++) {
+            x = (int) (tx * j);
+            y = (int) (ty * i);
 
             dx = tx * j - x;
             dy = ty * i - y;
@@ -254,13 +230,14 @@ bool vit_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const vit
             b = ((y + 1) * nx + x) * 3;
             c = ((y + 1) * nx + (x + 1)) * 3;
 
-            for (k = 0; k < 3; k++)
-            {
-                for (jj = 0; jj <= 3; jj++)
-                {
-                    d0 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x - 1, 0, nx - 1)) * 3 + k] - img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
-                    d2 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x + 1, 0, nx - 1)) * 3 + k] - img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
-                    d3 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x + 2, 0, nx - 1)) * 3 + k] - img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
+            for (k = 0; k < 3; k++) {
+                for (jj = 0; jj <= 3; jj++) {
+                    d0 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x - 1, 0, nx - 1)) * 3 + k] - img.data[
+                             (clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
+                    d2 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x + 1, 0, nx - 1)) * 3 + k] - img.data[
+                             (clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
+                    d3 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x + 2, 0, nx - 1)) * 3 + k] - img.data[
+                             (clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
                     a0 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
 
                     a1 = -1.0 / 3 * d0 + d2 - 1.0 / 6 * d3;
@@ -287,32 +264,24 @@ bool vit_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const vit
     return true;
 }
 
-bool vit_image_preprocess(const image_u8 &img, image_f32 &res, const vit_hparams &params)
-{
+bool vit_image_preprocess(const image_u8 &img, image_f32 &res, const vit_hparams &params) {
     const std::string mode = params.interpolation.c_str();
-    if (mode == "bilinear")
-    {
+    if (mode == "bilinear") {
         return vit_image_preprocess_bilinear(img, res, params);
-    }
-    else if (mode == "bicubic")
-    {
+    } else if (mode == "bicubic") {
         return vit_image_preprocess_bicubic(img, res, params);
-    }
-    else
-    {
+    } else {
         std::cout << "Interpolation mode '" << mode << "' is not supported; returning 'false'...";
         return false;
     }
 }
 
 // load the model's weights from a file following the ggml format(gguf)
-bool vit_model_load(const std::string &fname, vit_model &model)
-{
+bool vit_model_load(const std::string &fname, vit_model &model) {
     printf("%s: loading model from '%s' - please wait\n", __func__, fname.c_str());
 
     auto fin = std::ifstream(fname, std::ios::binary);
-    if (!fin)
-    {
+    if (!fin) {
         fprintf(stderr, "%s: failed to open '%s'\n", __func__, fname.c_str());
         return false;
     }
@@ -320,9 +289,8 @@ bool vit_model_load(const std::string &fname, vit_model &model)
     // verify magic
     {
         uint32_t magic;
-        fin.read((char *)&magic, sizeof(magic));
-        if (magic != GGML_FILE_MAGIC)
-        {
+        fin.read((char *) &magic, sizeof(magic));
+        if (magic != GGML_FILE_MAGIC) {
             fprintf(stderr, "%s: invalid model file '%s' (bad magic)\n", __func__, fname.c_str());
             return false;
         }
@@ -333,13 +301,13 @@ bool vit_model_load(const std::string &fname, vit_model &model)
         // override defaults
         auto &hparams = model.hparams;
 
-        fin.read((char *)&hparams.hidden_size, sizeof(hparams.hidden_size));
-        fin.read((char *)&hparams.num_hidden_layers, sizeof(hparams.num_hidden_layers));
-        fin.read((char *)&hparams.num_attention_heads, sizeof(hparams.num_attention_heads));
-        fin.read((char *)&hparams.num_classes, sizeof(hparams.num_classes));
-        fin.read((char *)&hparams.patch_size, sizeof(hparams.patch_size));
-        fin.read((char *)&hparams.img_size, sizeof(hparams.img_size));
-        fin.read((char *)&hparams.ftype, sizeof(hparams.ftype));
+        fin.read((char *) &hparams.hidden_size, sizeof(hparams.hidden_size));
+        fin.read((char *) &hparams.num_hidden_layers, sizeof(hparams.num_hidden_layers));
+        fin.read((char *) &hparams.num_attention_heads, sizeof(hparams.num_attention_heads));
+        fin.read((char *) &hparams.num_classes, sizeof(hparams.num_classes));
+        fin.read((char *) &hparams.patch_size, sizeof(hparams.patch_size));
+        fin.read((char *) &hparams.img_size, sizeof(hparams.img_size));
+        fin.read((char *) &hparams.ftype, sizeof(hparams.ftype));
 
         const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
 
@@ -358,8 +326,7 @@ bool vit_model_load(const std::string &fname, vit_model &model)
         int num_labels;
         fin.read(reinterpret_cast<char *>(&num_labels), sizeof(num_labels));
 
-        for (int i = 0; i < num_labels; ++i)
-        {
+        for (int i = 0; i < num_labels; ++i) {
             int key;
             int value_length;
             fin.read(reinterpret_cast<char *>(&key), sizeof(key));
@@ -383,42 +350,39 @@ bool vit_model_load(const std::string &fname, vit_model &model)
     // }
 
     ggml_type wtype = GGML_TYPE_COUNT;
-    switch (model.hparams.ftype)
-    {
-    case 0:
-        wtype = GGML_TYPE_F32;
-        break;
-    case 1:
-        wtype = GGML_TYPE_F16;
-        break;
-    case 2:
-        wtype = GGML_TYPE_Q4_0;
-        break;
-    case 3:
-        wtype = GGML_TYPE_Q4_1;
-        break;
-    case 6:
-        wtype = GGML_TYPE_Q5_0;
-        break;
-    case 7:
-        wtype = GGML_TYPE_Q5_1;
-        break;
-    case 8:
-        wtype = GGML_TYPE_Q8_0;
-        break;
-    default:
-    {
-        fprintf(stderr, "%s: invalid model file '%s' (bad f16 value %d)\n",
-                __func__, fname.c_str(), model.hparams.ftype);
-        return false;
-    }
+    switch (model.hparams.ftype) {
+        case 0:
+            wtype = GGML_TYPE_F32;
+            break;
+        case 1:
+            wtype = GGML_TYPE_F16;
+            break;
+        case 2:
+            wtype = GGML_TYPE_Q4_0;
+            break;
+        case 3:
+            wtype = GGML_TYPE_Q4_1;
+            break;
+        case 6:
+            wtype = GGML_TYPE_Q5_0;
+            break;
+        case 7:
+            wtype = GGML_TYPE_Q5_1;
+            break;
+        case 8:
+            wtype = GGML_TYPE_Q8_0;
+            break;
+        default: {
+            fprintf(stderr, "%s: invalid model file '%s' (bad f16 value %d)\n",
+                    __func__, fname.c_str(), model.hparams.ftype);
+            return false;
+        }
     }
 
     auto &ctx = model.ctx;
 
     // lambda function to calculate ggml context
-    const size_t ctx_size = [&]()
-    {
+    const size_t ctx_size = [&]() {
         size_t ctx_size = 0;
 
         const auto &hparams = model.hparams;
@@ -433,19 +397,19 @@ bool vit_model_load(const std::string &fname, vit_model &model)
 
         // image encoder
         {
-            ctx_size +=  ggml_row_size(GGML_TYPE_F32, hidden_size);
-            ctx_size +=  ggml_row_size(GGML_TYPE_F32, hidden_size * (n_img_embd * n_img_embd + 1));
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size * (n_img_embd * n_img_embd + 1));
 
-            ctx_size +=  ggml_row_size(GGML_TYPE_F16, hidden_size * 3 * n_patch_size * n_patch_size);
-            ctx_size +=  ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F16, hidden_size * 3 * n_patch_size * n_patch_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);
         }
 
         // image encoder layers
         {
-            ctx_size +=  num_hidden_layers * ggml_row_size(GGML_TYPE_F32,  hidden_size);
-            ctx_size +=  num_hidden_layers * ggml_row_size(GGML_TYPE_F32,  hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
 
-            ctx_size +=  num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size * hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 3 * hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
@@ -485,8 +449,7 @@ bool vit_model_load(const std::string &fname, vit_model &model)
         };
 
         ctx = ggml_init(params);
-        if (!ctx)
-        {
+        if (!ctx) {
             fprintf(stderr, "%s: ggml_init() failed\n", __func__);
             return false;
         }
@@ -522,8 +485,7 @@ bool vit_model_load(const std::string &fname, vit_model &model)
             model.tensors["patch_embed.proj.weight"] = enc.proj_w;
             model.tensors["patch_embed.proj.bias"] = enc.proj_b;
 
-            for (int i = 0; i < num_hidden_layers; ++i)
-            {
+            for (int i = 0; i < num_hidden_layers; ++i) {
                 auto &layer = enc.layers[i];
 
                 layer.norm1_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
@@ -588,8 +550,7 @@ bool vit_model_load(const std::string &fname, vit_model &model)
 
             fprintf(stderr, "%s: ", __func__);
 
-            while (true)
-            {
+            while (true) {
                 int32_t n_dims;
                 int32_t length;
                 int32_t ftype;
@@ -598,15 +559,13 @@ bool vit_model_load(const std::string &fname, vit_model &model)
                 fin.read(reinterpret_cast<char *>(&length), sizeof(length));
                 fin.read(reinterpret_cast<char *>(&ftype), sizeof(ftype));
 
-                if (fin.eof())
-                {
+                if (fin.eof()) {
                     break;
                 }
 
                 int64_t nelements = 1;
                 int64_t ne[4] = {1, 1, 1, 1};
-                for (int i = 0; i < n_dims; ++i)
-                {
+                for (int i = 0; i < n_dims; ++i) {
                     int32_t ne_cur;
                     fin.read(reinterpret_cast<char *>(&ne_cur), sizeof(ne_cur));
                     ne[i] = ne_cur;
@@ -616,8 +575,7 @@ bool vit_model_load(const std::string &fname, vit_model &model)
                 std::string name(length, 0);
                 fin.read(&name[0], length);
 
-                if (model.tensors.find(name.data()) == model.tensors.end())
-                {
+                if (model.tensors.find(name.data()) == model.tensors.end()) {
                     fprintf(stderr, "%s: unknown tensor '%s' in model file\n", __func__, name.data());
                     return false;
                 }
@@ -625,85 +583,83 @@ bool vit_model_load(const std::string &fname, vit_model &model)
                 auto tensor = model.tensors[name.data()];
                 // printf("ne0 = %jd, ne1 = %jd, ne2 = %jd, ne3 = %jd\n", ne[0], ne[1], ne[2], ne[3]);
 
-                if (ggml_nelements(tensor) != nelements)
-                {
+                if (ggml_nelements(tensor) != nelements) {
                     fprintf(stderr, "%s: tensor '%s' has wrong size in model file: got %d, expected %d\n",
-                            __func__, name.data(), (int)nelements, (int)ggml_nelements(tensor));
+                            __func__, name.data(), (int) nelements, (int) ggml_nelements(tensor));
                     return false;
                 }
 
-                if (tensor->ne[0] != ne[0] || tensor->ne[1] != ne[1] || tensor->ne[2] != ne[2] || tensor->ne[3] != ne[3])
-                {
-                    fprintf(stderr, "%s: tensor '%s' has wrong shape in model file: got [%d, %d, %d, %d], expected [%d, %d, %d, %d]\n",
-                            __func__, name.data(),
-                            (int)ne[0], (int)ne[1], (int)ne[2], (int)ne[3],
-                            (int)tensor->ne[0], (int)tensor->ne[1], (int)tensor->ne[2], (int)tensor->ne[3]);
+                if (tensor->ne[0] != ne[0] || tensor->ne[1] != ne[1] || tensor->ne[2] != ne[2] || tensor->ne[3] != ne[
+                        3]) {
+                    fprintf(
+                        stderr,
+                        "%s: tensor '%s' has wrong shape in model file: got [%d, %d, %d, %d], expected [%d, %d, %d, %d]\n",
+                        __func__, name.data(),
+                        (int) ne[0], (int) ne[1], (int) ne[2], (int) ne[3],
+                        (int) tensor->ne[0], (int) tensor->ne[1], (int) tensor->ne[2], (int) tensor->ne[3]);
                     return false;
                 }
 
                 size_t bpe = 0;
 
-                switch (ftype)
-                {
-                case 0:
-                    bpe = ggml_type_size(GGML_TYPE_F32);
-                    break;
-                case 1:
-                    bpe = ggml_type_size(GGML_TYPE_F16);
-                    break;
-                case 2:
-                    bpe = ggml_type_size(GGML_TYPE_Q4_0);
-                    assert(ne[0] % 64 == 0);
-                    break;
-                case 3:
-                    bpe = ggml_type_size(GGML_TYPE_Q4_1);
-                    assert(ne[0] % 64 == 0);
-                    break;
-                case 6:
-                    bpe = ggml_type_size(GGML_TYPE_Q5_0);
-                    assert(ne[0] % 64 == 0);
-                    break;
-                case 7:
-                    bpe = ggml_type_size(GGML_TYPE_Q5_1);
-                    assert(ne[0] % 64 == 0);
-                    break;
-                case 8:
-                    bpe = ggml_type_size(GGML_TYPE_Q8_0);
-                    assert(ne[0] % 64 == 0);
-                    break;
-                default:
-                {
-                    fprintf(stderr, "%s: unknown ftype %d in model file\n", __func__, ftype);
-                    return false;
-                }
+                switch (ftype) {
+                    case 0:
+                        bpe = ggml_type_size(GGML_TYPE_F32);
+                        break;
+                    case 1:
+                        bpe = ggml_type_size(GGML_TYPE_F16);
+                        break;
+                    case 2:
+                        bpe = ggml_type_size(GGML_TYPE_Q4_0);
+                        assert(ne[0] % 64 == 0);
+                        break;
+                    case 3:
+                        bpe = ggml_type_size(GGML_TYPE_Q4_1);
+                        assert(ne[0] % 64 == 0);
+                        break;
+                    case 6:
+                        bpe = ggml_type_size(GGML_TYPE_Q5_0);
+                        assert(ne[0] % 64 == 0);
+                        break;
+                    case 7:
+                        bpe = ggml_type_size(GGML_TYPE_Q5_1);
+                        assert(ne[0] % 64 == 0);
+                        break;
+                    case 8:
+                        bpe = ggml_type_size(GGML_TYPE_Q8_0);
+                        assert(ne[0] % 64 == 0);
+                        break;
+                    default: {
+                        fprintf(stderr, "%s: unknown ftype %d in model file\n", __func__, ftype);
+                        return false;
+                    }
                 };
 
-                if ((nelements * bpe) / ggml_blck_size(tensor->type) != ggml_nbytes(tensor))
-                {
+                if ((nelements * bpe) / ggml_blck_size(tensor->type) != ggml_nbytes(tensor)) {
                     fprintf(stderr, "%s: tensor '%s' has wrong size in model file: got %zu, expected %zu\n",
-                            __func__, name.data(), ggml_nbytes(tensor), (size_t)nelements * bpe);
+                            __func__, name.data(), ggml_nbytes(tensor), (size_t) nelements * bpe);
                     return false;
                 }
 
                 fin.read(reinterpret_cast<char *>(tensor->data), ggml_nbytes(tensor));
 
                 total_size += ggml_nbytes(tensor);
-                if (++n_tensors % 8 == 0)
-                {
+                if (++n_tensors % 8 == 0) {
                     fprintf(stderr, ".");
                     fflush(stdout);
                 }
             }
 
-            if (n_tensors != int(model.tensors.size()))
-            {
-                fprintf(stderr, "%s: model file has %d tensors, but %d tensors were expected\n", __func__, n_tensors, (int)model.tensors.size());
+            if (n_tensors != int(model.tensors.size())) {
+                fprintf(stderr, "%s: model file has %d tensors, but %d tensors were expected\n", __func__, n_tensors,
+                        (int) model.tensors.size());
                 return false;
             }
 
             fprintf(stderr, " done\n");
 
-            fprintf(stderr, "%s: model size = %8.2f MB / num tensors = %d\n", __func__, total_size / 1024.0 / 1024.0, n_tensors);
+            fprintf(stderr, "%s: model size = %8.2f MB / num tensors = %d\n", __func__, total_size / 1024.0 / 1024.0,
+                    n_tensors);
         }
 
         fin.close();
@@ -719,9 +675,7 @@ bool vit_model_load(const std::string &fname, vit_model &model)
 struct ggml_cgraph *vit_encode_image(
     const vit_model &model,
     vit_state &state,
-    const image_f32 &img)
-{
-
+    const image_f32 &img) {
     const auto &hparams = model.hparams;
     const auto &enc = model.enc_img;
     const auto &classifier = model.classifier;
@@ -780,8 +734,7 @@ struct ggml_cgraph *vit_encode_image(
     struct ggml_tensor *inpL = cur;
 
     // loop over layers
-    for (int il = 0; il < num_hidden_layers; ++il)
-    {
+    for (int il = 0; il < num_hidden_layers; ++il) {
         const auto &layer = enc.layers[il];
 
         // norm 1
@@ -830,21 +783,23 @@ struct ggml_cgraph *vit_encode_image(
 
             // attention weights
             struct ggml_tensor *KQ_scaled =
-                ggml_scale_inplace(ctx0,
-                                   KQ,
-                                   1.0f / sqrtf(n_enc_head_dim));
+                    ggml_scale_inplace(ctx0,
+                                       KQ,
+                                       1.0f / sqrtf(n_enc_head_dim));
 
             struct ggml_tensor *KQ_soft_max = ggml_soft_max_inplace(ctx0, KQ_scaled);
 
             struct ggml_tensor *KQV = ggml_mul_mat(ctx0, V, KQ_soft_max);
 
             cur =
-                ggml_reshape_4d(ctx0,
-                                ggml_cont(ctx0,
-                                          ggml_permute(ctx0,
-                                                       ggml_reshape_4d(ctx0, KQV, n_enc_head_dim, W * H, num_attention_heads, B),
-                                                       0, 2, 1, 3)),
-                                hidden_size, W, H, B);
+                    ggml_reshape_4d(ctx0,
+                                    ggml_cont(ctx0,
+                                              ggml_permute(ctx0,
+                                                           ggml_reshape_4d(
+                                                               ctx0, KQV, n_enc_head_dim, W * H, num_attention_heads,
+                                                               B),
+                                                           0, 2, 1, 3)),
+                                    hidden_size, W, H, B);
 
             cur = ggml_mul_mat(ctx0, layer.proj_w, cur);
             cur = ggml_add_inplace(ctx0, cur, layer.proj_b);
@@ -918,22 +873,20 @@ struct ggml_cgraph *vit_encode_image(
 
     ggml_free(ctx0);
 
-    ggml_gallocr_alloc_graph(state.allocr, gf);
-
-    {
-        struct ggml_tensor * inp = ggml_graph_get_tensor(gf, "inp");
-        float * data = (float *) ggml_get_data(inp);
+    ggml_gallocr_alloc_graph(state.allocr, gf); {
+        struct ggml_tensor *inp = ggml_graph_get_tensor(gf, "inp");
+        float *data = (float *) ggml_get_data(inp);
 
         const int nx = img.nx;
         const int ny = img.ny;
-        const int n  = nx*ny;
+        const int n = nx * ny;
 
         GGML_ASSERT(nx == n_img_size && ny == n_img_size);
 
         for (int k = 0; k < 3; k++) {
             for (int y = 0; y < ny; y++) {
                 for (int x = 0; x < nx; x++) {
-                    data[k*n + y*nx + x] = img.data[3*(y*nx + x) + k];
+                    data[k * n + y * nx + x] = img.data[3 * (y * nx + x) + k];
                 }
             }
         }
@@ -942,58 +895,41 @@ struct ggml_cgraph *vit_encode_image(
     return gf;
 }
 
-void print_usage(int argc, char **argv, const vit_params &params)
-{
+void print_usage(int argc, char **argv, const vit_params &params) {
     fprintf(stderr, "usage: %s [options]\n", argv[0]);
     fprintf(stderr, "\n");
     fprintf(stderr, "options:\n");
     fprintf(stderr, "  -h, --help              show this help message and exit\n");
     fprintf(stderr, "  -m FNAME, --model       model path (default: %s)\n", params.model.c_str());
     fprintf(stderr, "  -i FNAME, --inp         input file (default: %s)\n", params.fname_inp.c_str());
-    fprintf(stderr, "  -t N, --threads         number of threads to use during computation (default: %d)\n", params.n_threads);
+    fprintf(stderr, "  -t N, --threads         number of threads to use during computation (default: %d)\n",
+            params.n_threads);
     fprintf(stderr, "  -k N, --topk            top k classes to print (default: %d)\n", params.topk);
     fprintf(stderr, "  -s SEED, --seed         RNG seed (default: -1)\n");
     fprintf(stderr, "  -e FLOAT, --epsilon     epsilon constant in Layer Norm layers (default: %f)\n", params.eps);
     fprintf(stderr, "\n");
 }
 
-bool vit_params_parse(int argc, char **argv, vit_params &params)
-{
-    for (int i = 1; i < argc; i++)
-    {
+bool vit_params_parse(int argc, char **argv, vit_params &params) {
+    for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
 
-        if (arg == "-s" || arg == "--seed")
-        {
+        if (arg == "-s" || arg == "--seed") {
             params.seed = std::stoi(argv[++i]);
-        }
-        else if (arg == "-t" || arg == "--threads")
-        {
+        } else if (arg == "-t" || arg == "--threads") {
             params.n_threads = std::stoi(argv[++i]);
-        }
-        else if (arg == "-m" || arg == "--model")
-        {
+        } else if (arg == "-m" || arg == "--model") {
             params.model = argv[++i];
-        }
-        else if (arg == "-i" || arg == "--inp")
-        {
+        } else if (arg == "-i" || arg == "--inp") {
             params.fname_inp = argv[++i];
-        }
-        else if (arg == "-k" || arg == "--topk")
-        {
+        } else if (arg == "-k" || arg == "--topk") {
             params.topk = std::stoi(argv[++i]);
-        }
-        else if (arg == "-e" || arg == "--epsilon")
-        {
+        } else if (arg == "-e" || arg == "--epsilon") {
             params.eps = std::stof(argv[++i]);
-        }
-        else if (arg == "-h" || arg == "--help")
-        {
+        } else if (arg == "-h" || arg == "--help") {
             print_usage(argc, argv, params);
             exit(0);
-        }
-        else
-        {
+        } else {
             fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
             print_usage(argc, argv, params);
             exit(0);
@@ -1003,15 +939,14 @@ bool vit_params_parse(int argc, char **argv, vit_params &params)
     return true;
 }
 
-int vit_predict(const vit_model &model, vit_state &state, const image_f32 img1, const vit_params &params, std::vector<std::pair<float, int>> &predictions)
-{
+int vit_predict(const vit_model &model, vit_state &state, const image_f32 img1, const vit_params &params,
+                std::vector<std::pair<float, int> > &predictions) {
     // first build the graph and record memory requirements
     state.buf_compute_img_enc.resize(ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead());
     state.allocr = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
 
     struct ggml_cgraph *gf = vit_encode_image(model, state, img1);
-    if (!gf)
-    {
+    if (!gf) {
         fprintf(stderr, "%s: failed to encode image\n", __func__);
         return 1;
     }
@@ -1028,23 +963,20 @@ int vit_predict(const vit_model &model, vit_state &state, const image_f32 img1, 
     // std::vector<std::pair<float, int>> predictions;
 
     // store probability and index
-    for (int i = 0; i < model.hparams.num_classes; ++i)
-    {
+    for (int i = 0; i < model.hparams.num_classes; ++i) {
         predictions.push_back(std::make_pair(probs_data[i], i));
     }
 
     // sort in descending order
     std::sort(predictions.begin(), predictions.end(),
-              [](const std::pair<float, int> &a, const std::pair<float, int> &b)
-              {
+              [](const std::pair<float, int> &a, const std::pair<float, int> &b) {
                   return a.first > b.first;
               });
 
     fprintf(stderr, "\n");
 
     // top k predictions
-    for (int i = 0; i < params.topk && i < predictions.size(); ++i)
-    {
+    for (int i = 0; i < params.topk && i < predictions.size(); ++i) {
         printf(" > %s : %.2f\n",
                model.hparams.id2label.at(predictions[i].second).c_str(),
                predictions[i].first);

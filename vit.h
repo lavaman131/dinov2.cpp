@@ -112,7 +112,7 @@ struct vit_params
     float eps = 1e-6f;                             // epsilon used in LN
 };
 
-void print_t_f32(const char *title, struct ggml_tensor *t, int n);
+void print_t_f32(const char *title, const struct ggml_tensor *t, int n);
 static void ggml_disconnect_node_from_graph(ggml_tensor *t);
 void ggml_graph_compute_helper(std::vector<uint8_t> &buf, ggml_cgraph *graph, int n_threads);
 bool load_image_from_file(const std::string &fname, image_u8 &img);
