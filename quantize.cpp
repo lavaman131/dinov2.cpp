@@ -242,9 +242,10 @@ bool vit_model_quantize(const std::string &fname_inp, const std::string &fname_o
                 work.resize(nelements); // for quantization
 
                 size_t cur_size = 0;
-                std::vector<int64_t> hist_cur(1 << 4, 0);
+                std::vector<float> hist_cur(1 << 4, 0);
 
-                cur_size = ggml_quantize_chunk(type, data_f32.data(), work.data(), nelements, ne[0], hist_cur.data());
+                cur_size = ggml_quantize_chunk(type, data_f32.data(), work.data(), 0, nelements, ne[0],
+                                               hist_cur.data());
 
                 fout.write(reinterpret_cast<char *>(work.data()), cur_size);
                 total_size_new += cur_size;
