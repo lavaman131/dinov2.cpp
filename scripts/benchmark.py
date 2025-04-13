@@ -93,16 +93,14 @@ def main() -> None:
 
     # an image
     image_path = "./assets/tench.jpg"
-    for name, model_name in model_variants.items():
-        model = Dinov2ForImageClassification.from_pretrained(model_name)
 
-    # with threadpool_limits(limits=4):
-    #     print("| Model | Speed (ms)   |   Mem (MB)       |")
-    #     print("|-------|--------------|------------------|")
+    with threadpool_limits(limits=4):
+        print("| Model | Speed (ms)   |   Mem (MB)       |")
+        print("|-------|--------------|------------------|")
 
-    #     for name, model_name in model_variants.items():
-    #         avg_time, peak_memory = benchmark_model(image_path, model_name)
-    #         print(f"| {name} | {avg_time:.0f} | {peak_memory:.0f} |")
+        for name, model_name in model_variants.items():
+            avg_time, peak_memory = benchmark_model(image_path, model_name)
+            print(f"| {name} | {avg_time:.0f} | {peak_memory:.0f} |")
 
 
 if __name__ == "__main__":
