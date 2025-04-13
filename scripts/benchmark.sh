@@ -1,4 +1,60 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+# Setup platform-independent date and time commands
+setup_commands() {
+    # Detect operating system
+    OS=$(uname -s)
+    
+    # Define functions based on OS
+    if [[ "$OS" == "Darwin" ]]; then
+        # macOS requires GNU tools installed via Homebrew
+        if command -v gdate >/dev/null 2>&1 && command -v gtime >/dev/null 2>&1; then
+            # Using GNU tools from Homebrew
+            echo "Using GNU tools on macOS"
+        else
+            echo "Error: GNU date and time not found. Install with:"
+            echo "brew install coreutils gnu-time"
+            exit 1
+        fi
+        
+        # Define wrapper functions for macOS
+        get_time() {
+            gdate +%s%N
+        }
+        
+        measure_cmd() {
+            local cmd="$1"
+            local threads="$2"
+            local model="$3"
+            local image="$4"
+            gtime -f "%M" -o mem.txt $cmd -t $threads -m $model -i $image > /dev/null 2>&1
+        }
+        
+        get_mem() {
+            cat mem.txt
+        }
+    else
+        # Linux uses native GNU tools
+        echo "Using native GNU tools on Linux"
+        
+        # Define wrapper functions for Linux
+        get_time() {
+            date +%s%N
+        }
+        
+        measure_cmd() {
+            local cmd="$1"
+            local threads="$2"
+            local model="$3"
+            local image="$4"
+            /usr/bin/time -f "%M" -o mem.txt $cmd -t $threads -m $model -i $image > /dev/null 2>&1
+        }
+        
+        get_mem() {
+            cat mem.txt
+        }
+    fi
+}
 
 # arrays
 declare -a models=("tiny" "small" "base" "large")
@@ -23,6 +79,8 @@ if [ "$#" -ge 2 ]; then
     quantize_flag=$2
 fi
 
+setup_commands
+
 
 for model in "${models[@]}"; do
     # convert the model to gguf
@@ -43,9 +101,9 @@ for model in "${models[@]}"; do
             mem_usage=0
 
             for ((i=1; i<=N; i++)); do
-                start=$(date +%s%N)
-                /usr/bin/time -f "%M" -o mem.txt ./bin/dinov2 -t $num_threads -m ../ggml-model-f16-quant.gguf -i ../assets/tench.jpg > /dev/null 2>&1
-                end=$(date +%s%N)
+                start=$(get_time)
+                measure_cmd "./bin/dinov2" $num_threads "../ggml-model-f16-quant.gguf" "../assets/tench.jpg"
+                end=$(get_time)
                 diff=$((end-start))
                 sum=$((sum+diff))
                 mem_usage=$(($mem_usage + $(cat mem.txt)))
@@ -66,9 +124,9 @@ for model in "${models[@]}"; do
         mem_usage=0
 
         for ((i=1; i<=N; i++)); do
-            start=$(date +%s%N)
-            /usr/bin/time -f "%M" -o mem.txt ./bin/dinov2 -t $num_threads -m ../ggml-model-f16.gguf -i ../assets/tench.jpg > /dev/null 2>&1
-            end=$(date +%s%N)
+            start=$(get_time)
+            measure_cmd "./bin/dinov2" $num_threads "../ggml-model-f16.gguf" "../assets/tench.jpg"
+            end=$(get_time)
             diff=$((end-start))
             sum=$((sum+diff))
             mem_usage=$(($mem_usage + $(cat mem.txt)))
