@@ -142,7 +142,7 @@ def process_and_write_variable(file, name, tensor, ftype):
     data = tensor.numpy()
     ftype_cur = (
         1
-        if ftype == 1 and tensor.ndim != 1 and name not in ["pos_embed", "cls_token"]
+        if ftype == 1 and tensor.ndim != 1 and name not in {"pos_embed", "cls_token", "register_tokens"}
         else 0
     )
     data = data.astype(np.float32) if ftype_cur == 0 else data.astype(np.float16)
