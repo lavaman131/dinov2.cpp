@@ -11,21 +11,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["torch", "timm", "hf_transfer"]
 
-[tool.uv.sources]
-torch = [
-    { index = "pytorch-cpu", marker = "sys_platform != 'linux'" },
-    { index = "pytorch-cu124", marker = "sys_platform == 'linux'" },
-]
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-cu124"
-url = "https://download.pytorch.org/whl/cu124"
-explicit = true
+[tool.uv.pip]
+torch-backend = "auto"
 
 [tool.setuptools.packages.find]
 where = ["src"]
