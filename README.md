@@ -4,48 +4,51 @@ Inference Vision Transformer (ViT) in plain C/C++ using ggml without any extra d
 
 ## Description
 
-
-This project presents a standalone implementation of the well known Vision Transformer (ViT) model family, used in a broad spectrum of applications and SOTA models like Large Multimodal Models(LMM). The primary goal is to develop a C/C++ inference engine tailored for ViT models, utilizing [ggml](https://github.com/ggerganov/ggml) to enhance performance, particularly on edge devices. Designed to be both lightweight and self-contained, this implementation can be run across diverse platforms.
+This project presents a standalone implementation of the well known Vision Transformer (ViT) model family, used in a
+broad spectrum of applications and SOTA models like Large Multimodal Models(LMM). The primary goal is to develop a C/C++
+inference engine tailored for ViT models, utilizing [ggml](https://github.com/ggerganov/ggml) to enhance performance,
+particularly on edge devices. Designed to be both lightweight and self-contained, this implementation can be run across
+diverse platforms.
 
 <details>
 <summary>Table of Contents</summary>
 
 - [dinov2.cpp](#dinov2cpp)
-  - [Description](#description)
-  - [Features](#features)
-  - [Vision Transformer architecture](#vision-transformer-architecture)
-  - [Quick example](#quick-example)
-  - [Convert PyTorch to GGUF](#convert-pytorch-to-gguf)
-  - [Build](#build)
-    - [Simple build](#simple-build)
-    - [Per device optimizations](#per-device-optimizations)
-      - [For AMD host processors](#for-amd-host-processors)
-    - [Using OpenMP](#using-openmp)
-  - [Run](#run)
-  - [Benchmark against PyTorch](#benchmark-against-pytorch)
-    - [ViT inference](#vit-inference)
-    - [Benchmark on your machine](#benchmark-on-your-machine)
-  - [Quantization](#quantization)
-    - [Results](#results)
-  - [To-Do List](#to-do-list)
-  - [Star History](#star-history)
+    - [Description](#description)
+    - [Features](#features)
+    - [Vision Transformer architecture](#vision-transformer-architecture)
+    - [Quick example](#quick-example)
+    - [Convert PyTorch to GGUF](#convert-pytorch-to-gguf)
+    - [Build](#build)
+        - [Simple build](#simple-build)
+        - [Per device optimizations](#per-device-optimizations)
+            - [For AMD host processors](#for-amd-host-processors)
+        - [Using OpenMP](#using-openmp)
+    - [Run](#run)
+    - [Benchmark against PyTorch](#benchmark-against-pytorch)
+        - [ViT inference](#vit-inference)
+        - [Benchmark on your machine](#benchmark-on-your-machine)
+    - [Quantization](#quantization)
+        - [Results](#results)
+    - [To-Do List](#to-do-list)
+    - [Star History](#star-history)
+
 </details>
 
-
 ## Features
-
 
 - Dependency-free and lightweight inference thanks to [ggml](https://github.com/ggerganov/ggml).
 - 4-bit, 5-bit and 8-bit quantization support.
 - Support for timm ViTs with different variants out of the box.
 
-An important aspect of using `vit.cpp` is that it has short startup times compared to common DL frameworks, which makes it suitable for serverless deployments where the cold start is an issue.
+An important aspect of using `vit.cpp` is that it has short startup times compared to common DL frameworks, which makes
+it suitable for serverless deployments where the cold start is an issue.
 
 ## Vision Transformer architecture
 
-
 The implemented architecture is based on the original Vision Transformer from:
-  - [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)
+
+- [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)
 
 <p align="center">
   <img src="assets/image.png" alt="Vision Transformer overview" width="60%" height="auto">
@@ -55,7 +58,6 @@ The implemented architecture is based on the original Vision Transformer from:
 </p>
 
 ## Quick example
-
 
 <details>
   <p align="center">
@@ -84,19 +86,17 @@ The implemented architecture is based on the original Vision Transformer from:
   processed, out dims : (224 x 224)
 
 
-  &gt; magpie : 0.87
-  &gt; goose : 0.02
-  &gt; toucan : 0.01
-  &gt; drake : 0.01
-  &gt; king penguin, Aptenodytes patagonica : 0.01
+&gt; magpie : 0.87
+&gt; goose : 0.02
+&gt; toucan : 0.01
+&gt; drake : 0.01
+&gt; king penguin, Aptenodytes patagonica : 0.01
 
-
-  main:    model load time =    17.92 ms
-  main:    processing time =   146.96 ms
-  main:    total time      =   164.88 ms
+main:    model load time = 17.92 ms
+main:    processing time = 146.96 ms
+main:    total time = 164.88 ms
   </pre>
 </details>
-
 
 ## Convert PyTorch to GGUF
 
@@ -107,7 +107,10 @@ git clone --recurse-submodules git@github.com:lavaman131/dinov2.cpp.git
 cd dinov2.cpp
 
 uv venv
+# for MacOS/Linux
 source .venv/bin/activate
+# for Windows
+.venv\Scripts\activate
 uv sync --frozen
 
 # list available models if needed; note that not all models are supported
@@ -118,13 +121,12 @@ python convert-pth-to-ggml.py --list
 python convert-pth-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_in1k --ftype 1
 ```
 
-> **Note:** You can also download the converted weights from [Hugging Face](https://huggingface.co/staghado/vit.cpp) directly.
+> **Note:** You can also download the converted weights from [Hugging Face](https://huggingface.co/staghado/vit.cpp)
+> directly.
 
 > ```wget https://huggingface.co/staghado/vit.cpp/blob/main/tiny-ggml-model-f16.gguf```
 
-
 ## Build
-
 
 ### Simple build
 
@@ -137,28 +139,28 @@ cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && make -j 4
 ./bin/vit -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 
-The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of threads equal to the number of available physical cores gives the best performance in terms of speed.
+The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of
+threads equal to the number of available physical cores gives the best performance in terms of speed.
 
 ### Per device optimizations
 
-
 Generate per-device instructions that work best for the given machine rather than using general CPU instructions.
 This can be done by specifying `-march=native` in the compiler flags.
-  * Multi-threading and vectorization
-  * Loop transformations(unrolling)
+
+* Multi-threading and vectorization
+* Loop transformations(unrolling)
 
 #### For AMD host processors
-
 
 You can use a specialized compiler released by AMD to make full use of your specific processor's architecture.
 Read more here : [AMD Optimizing C/C++ and Fortran Compilers (AOCC)](https://www.amd.com/en/developer/aocc.html)
 
 You can follow the given instructions to install the AOCC compiler.
 
-Note : For my AMD Ryzen 7 3700U, the improvements were not very significant but for more recent processors there could be a gain in using a specialized compiler.
+Note : For my AMD Ryzen 7 3700U, the improvements were not very significant but for more recent processors there could
+be a gain in using a specialized compiler.
 
 ### Using OpenMP
-
 
 Additionally compile with OpenMP by specifying the `-fopenmp` flag to the compiler in the CMakeLists file,
 allowing multithreaded runs. Make sure to also enable multiple threads when running, e.g.:
@@ -184,18 +186,18 @@ options:
 
 ## Benchmark against PyTorch
 
-
-First experiments on Apple M1 show inference speedups(up to 6x faster for base model) compared to native PyTorch inference. 
+First experiments on Apple M1 show inference speedups(up to 6x faster for base model) compared to native PyTorch
+inference.
 
 ### ViT inference
 
-
 You can efficiently run ViT inference on the CPU.
-Memory requirements and inference speed on AMD Ryzen 7 3700U(4 cores, 8 threads) for both native PyTorch and `vit.cpp`. 
-Using 4 threads gives better results for my machine. The reported results of inference speed correspond to 10 runs averages for both PyTorch and `vit.cpp`.
+Memory requirements and inference speed on AMD Ryzen 7 3700U(4 cores, 8 threads) for both native PyTorch and `vit.cpp`.
+Using 4 threads gives better results for my machine. The reported results of inference speed correspond to 10 runs
+averages for both PyTorch and `vit.cpp`.
 
 | Model | Max Mem(PyTorch) |   Max Mem   | Speed(PyTorch) |    Speed    |
-| :---: | :--------------: | :---------: | :------------: | :---------: |
+|:-----:|:----------------:|:-----------:|:--------------:|:-----------:|
 | tiny  |     ~780 MB      | **~20 MB**  |     431 ms     | **120 ms**  |
 | small |     ~965 MB      | **~52 MB**  |     780 ms     | **463 ms**  |
 | base  |     ~1.61 GB     | **~179 MB** |    2393 ms     | **1441 ms** |
@@ -204,7 +206,6 @@ Using 4 threads gives better results for my machine. The reported results of inf
 > **Note:** The models used are of the form `vit_{size}_patch16_224.augreg_in21k_ft_in1k`.
 
 ### Benchmark on your machine
-
 
 In order to test the inference speed on your machine, you can run the following scripts:
 
@@ -224,13 +225,15 @@ python scripts/benchmark.py
 ./scripts/benchmark.sh 4 1
 ```
 
-Both scripts use 4 threads by default. In Python, the `threadpoolctl` library is used to limit the number of threads used by PyTorch.
+Both scripts use 4 threads by default. In Python, the `threadpoolctl` library is used to limit the number of threads
+used by PyTorch.
 
 ## Quantization
 
-
 `vit.cpp` supports many quantization strategies from ggml such as q4_0, q4_1, q5_0, q5_1 and q8_0 types.
-You can quantize a model in F32 (the patch embedding is in F16) to one of these types by using the `./bin/quantize` binary. 
+You can quantize a model in F32 (the patch embedding is in F16) to one of these types by using the `./bin/quantize`
+binary.
+
 ```
 usage: ./bin/quantize /path/to/ggml-model-f32.gguf /path/to/ggml-model-quantized.gguf type                              
   type = 2 - q4_0                                                                                                       
@@ -250,11 +253,11 @@ Then you can use `tiny-ggml-model-f16-quant.gguf` just like the model in F16.
 
 ### Results
 
-Here are the benchmarks for the different models and quantizations on my machine: 
-For accurate estimation of run times, these benchmarks were run 100 times each.  
+Here are the benchmarks for the different models and quantizations on my machine:
+For accurate estimation of run times, these benchmarks were run 100 times each.
 
 | Model | Quantization | Speed (ms) | Mem (MB) |
-| :---: | :----------: | :--------: | :------: |
+|:-----:|:------------:|:----------:|:--------:|
 | tiny  |     q4_0     |   105 ms   |  12 MB   |
 | tiny  |     q4_1     |   97 ms    |  12 MB   |
 | tiny  |     q5_0     |   116 ms   |  13 MB   |
@@ -278,12 +281,12 @@ For accurate estimation of run times, these benchmarks were run 100 times each.
 
 ## To-Do List
 
-
-- **Evaluate performance on ImageNet1k**: 
+- **Evaluate performance on ImageNet1k**:
 
   Run evaluation on ImageNet1k test set and analyze the performance of different quantization schemes.
 
 This project was highly inspired by the following projects:
+
 * [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
 * [llama.cpp](https://github.com/ggerganov/llama.cpp)
 
