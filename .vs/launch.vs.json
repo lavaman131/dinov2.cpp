@@ -1,0 +1,15 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "dinov2.exe (bin\\dinov2.exe)",
+      "name": "dinov2.exe (bin\\dinov2.exe)",
+        "args": [
+            "-t", "4", "-m","..\\..\\..\\..\\ggml-model-f16.gguf", "-i", "..\\..\\..\\..\\assets\\tench.jpg"
+        ]
+    }
+  ]
+}
