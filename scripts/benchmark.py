@@ -1,6 +1,4 @@
 import time
-
-import timm
 import torch
 import torchvision.transforms as transforms
 from memory_profiler import memory_usage
