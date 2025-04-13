@@ -23,8 +23,8 @@
 #endif
 
 // main function
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
+    ggml_time_init();
     const int64_t t_main_start_us = ggml_time_us();
 
     vit_params params;
@@ -37,24 +37,22 @@ int main(int argc, char **argv)
 
     int64_t t_load_us = 0;
 
-    if (vit_params_parse(argc, argv, params) == false)
-    {
+    if (vit_params_parse(argc, argv, params) == false) {
         return 1;
     }
 
-    if (params.seed < 0)
-    {
+    if (params.seed < 0) {
         params.seed = time(nullptr);
     }
     fprintf(stderr, "%s: seed = %d\n", __func__, params.seed);
-    fprintf(stderr, "%s: n_threads = %d / %d\n", __func__, params.n_threads, (int32_t)std::thread::hardware_concurrency());
+    fprintf(stderr, "%s: n_threads = %d / %d\n", __func__, params.n_threads,
+            (int32_t) std::thread::hardware_concurrency());
 
     // load the model
     {
         const int64_t t_start_us = ggml_time_us();
 
-        if (!vit_model_load(params.model, model))
-        {
+        if (!vit_model_load(params.model, model)) {
             fprintf(stderr, "%s: failed to load model from '%s'\n", __func__, params.model.c_str());
             return 1;
         }
@@ -63,16 +61,14 @@ int main(int argc, char **argv)
     }
 
     // load the image
-    if (!load_image_from_file(params.fname_inp, img0))
-    {
+    if (!load_image_from_file(params.fname_inp, img0)) {
         fprintf(stderr, "%s: failed to load image from '%s'\n", __func__, params.fname_inp.c_str());
         return 1;
     }
     fprintf(stderr, "%s: loaded image '%s' (%d x %d)\n", __func__, params.fname_inp.c_str(), img0.nx, img0.ny);
 
     // preprocess the image to f32
-    if (vit_image_preprocess(img0, img1, model.hparams))
-    {
+    if (vit_image_preprocess(img0, img1, model.hparams)) {
         fprintf(stderr, "processed, out dims : (%d x %d)\n", img1.nx, img1.ny);
     }
 
@@ -91,7 +87,7 @@ int main(int argc, char **argv)
 
         // printf("%s: Initialized context = %ld bytes\n", __func__, buf_size);
     } {
-        std::vector<std::pair<float, int>> predictions;
+        std::vector<std::pair<float, int> > predictions;
         // run prediction on img1
         vit_predict(model, state, img1, params, predictions);
     }
@@ -101,7 +97,8 @@ int main(int argc, char **argv)
         const int64_t t_main_end_us = ggml_time_us();
         fprintf(stderr, "\n\n");
         fprintf(stderr, "%s:    model load time = %8.2f ms\n", __func__, t_load_us / 1000.0f);
-        fprintf(stderr, "%s:    processing time = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us - t_load_us) / 1000.0f);
+        fprintf(stderr, "%s:    processing time = %8.2f ms\n", __func__,
+                (t_main_end_us - t_main_start_us - t_load_us) / 1000.0f);
         fprintf(stderr, "%s:    total time      = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us) / 1000.0f);
     }
 
