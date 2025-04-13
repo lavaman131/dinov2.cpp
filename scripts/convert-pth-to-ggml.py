@@ -1,11 +1,8 @@
 import argparse
 import struct
-import sys
 from typing import Dict, BinaryIO
 import numpy as np
-import timm
 import torch
-from timm.data import ImageNetInfo, infer_imagenet_subset
 from transformers import AutoImageProcessor, AutoModel, AutoConfig
 
 GGML_MAGIC = 0x67676d6c
