@@ -131,12 +131,17 @@ python convert-pth-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_
 ### Simple build
 
 ```bash
-# build ggml and vit 
+# on MacOS/Linux
 mkdir build && cd build
 cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && make -j 4
+./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```
 
-# run inference
-./bin/vit -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```bash
+# on Windows
+mkdir build ; cd build
+cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ; make -j 4
+./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 
 The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of
