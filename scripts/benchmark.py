@@ -40,12 +40,12 @@ def make_classification_eval_transform(
 
 
 def process_and_predict(image_path: str, model_path: str) -> torch.Tensor:
-    model = Dinov2ForImageClassification.from_pretrained(model_path)
+    device = "cpu"
+    model = Dinov2ForImageClassification.from_pretrained(model_path, device_map=device)
     preprocess = make_classification_eval_transform()
 
     image = Image.open(image_path).convert("RGB")
-    image = preprocess(image)
-    image = image.unsqueeze_(0)
+    image = preprocess(image).to(device, non_blocking=True).unsqueeze_(0)
 
     with torch.inference_mode():
         logits = model(image).logits
