@@ -19,6 +19,9 @@ dependencies = [
     "threadpoolctl",
 ]
 
+[tool.uv]
+preview = true
+
 [tool.uv.pip]
 torch-backend = "auto"
 
