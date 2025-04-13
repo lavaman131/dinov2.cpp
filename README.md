@@ -140,8 +140,9 @@ cmake .. && make -j 4
 ```bash
 # on Windows
 mkdir build ; cd build
-cmake .. ; make -j 4
-./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
+ninja
+./bin/dinov2.exe -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 
 The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of
