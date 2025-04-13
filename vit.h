@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ggml/ggml.h"
-#include "ggml/ggml-alloc.h"
+#include "ggml.h"
+#include "ggml-alloc.h"
 #include "ggml/examples/stb_image.h"
 
 #include <cassert>
@@ -76,7 +76,7 @@ struct vit_state
     std::vector<uint8_t> work_buffer;
     std::vector<uint8_t> buf_alloc_img_enc;
     std::vector<uint8_t> buf_compute_img_enc;
-    struct ggml_allocr *allocr;
+    ggml_gallocr_t allocr = {};
 };
 
 struct vit_model

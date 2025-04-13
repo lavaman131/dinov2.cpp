@@ -1,8 +1,9 @@
 #define _CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnigns on Windows
 
 #include "vit.h"
-#include "ggml/ggml.h"
-#include "ggml/ggml-alloc.h"
+#include "ggml.h"
+#include "ggml-cpu.h"
+#include "ggml-alloc.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "ggml/examples/stb_image.h" // stb image load
@@ -94,7 +95,7 @@ static void ggml_disconnect_node_from_graph(ggml_tensor *t)
 
 void ggml_graph_compute_helper(std::vector<uint8_t> &buf, ggml_cgraph *graph, int n_threads)
 {
-    struct ggml_cplan plan = ggml_graph_plan(graph, n_threads);
+    struct ggml_cplan plan = ggml_graph_plan(graph, n_threads, nullptr);
 
     if (plan.work_size > 0)
     {
@@ -432,32 +433,32 @@ bool vit_model_load(const std::string &fname, vit_model &model)
 
         // image encoder
         {
-            ctx_size += hidden_size * ggml_type_sizef(GGML_TYPE_F32);
-            ctx_size += hidden_size * (n_img_embd * n_img_embd + 1) * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size +=  ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size +=  ggml_row_size(GGML_TYPE_F32, hidden_size * (n_img_embd * n_img_embd + 1));
 
-            ctx_size += hidden_size * 3 * n_patch_size * n_patch_size * ggml_type_sizef(GGML_TYPE_F16);
-            ctx_size += hidden_size * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size +=  ggml_row_size(GGML_TYPE_F16, hidden_size * 3 * n_patch_size * n_patch_size);
+            ctx_size +=  ggml_row_size(GGML_TYPE_F32, hidden_size);
         }
 
         // image encoder layers
         {
-            ctx_size += num_hidden_layers * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
-            ctx_size += num_hidden_layers * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size +=  num_hidden_layers * ggml_row_size(GGML_TYPE_F32,  hidden_size);
+            ctx_size +=  num_hidden_layers * ggml_row_size(GGML_TYPE_F32,  hidden_size);
 
-            ctx_size += num_hidden_layers * 3 * hidden_size * hidden_size * ggml_type_sizef(wtype);
-            ctx_size += num_hidden_layers * 3 * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size +=  num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 3 * hidden_size);
 
-            ctx_size += num_hidden_layers * hidden_size * hidden_size * ggml_type_sizef(wtype);
-            ctx_size += num_hidden_layers * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
 
-            ctx_size += num_hidden_layers * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
-            ctx_size += num_hidden_layers * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
 
-            ctx_size += num_hidden_layers * 4 * hidden_size * hidden_size * ggml_type_sizef(wtype);
-            ctx_size += num_hidden_layers * 4 * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 4 * hidden_size);
 
-            ctx_size += num_hidden_layers * 4 * hidden_size * hidden_size * ggml_type_sizef(wtype);
-            ctx_size += num_hidden_layers * 4 * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 4 * hidden_size);
         }
 
         // dig into this more later!
@@ -465,9 +466,9 @@ bool vit_model_load(const std::string &fname, vit_model &model)
 
         // classifier
         {
-            ctx_size += 2 * hidden_size * ggml_type_sizef(GGML_TYPE_F32);
-            ctx_size += num_classes * hidden_size * ggml_type_sizef(wtype);
-            ctx_size += num_classes * ggml_type_sizef(GGML_TYPE_F32);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, 2 * hidden_size);
+            ctx_size += ggml_row_size(wtype, num_classes * hidden_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, num_classes);
         }
 
         fprintf(stderr, "%s: ggml ctx size = %6.2f MB\n", __func__, ctx_size / (1024.0 * 1024.0));
@@ -745,28 +746,8 @@ struct ggml_cgraph *vit_encode_image(
     struct ggml_cgraph *gf = ggml_new_graph(ctx0);
 
     struct ggml_tensor *inp = ggml_new_tensor_4d(ctx0, GGML_TYPE_F32, n_img_size, n_img_size, 3, 1);
-    ggml_allocr_alloc(state.allocr, inp);
-    if (!ggml_allocr_is_measure(state.allocr))
-    {
-        float *data = (float *)ggml_get_data(inp);
-
-        const int nx = img.nx;
-        const int ny = img.ny;
-        const int n = nx * ny;
-
-        GGML_ASSERT(nx == n_img_size && ny == n_img_size);
-
-        for (int k = 0; k < 3; k++)
-        {
-            for (int y = 0; y < ny; y++)
-            {
-                for (int x = 0; x < nx; x++)
-                {
-                    data[k * n + y * nx + x] = img.data[3 * (y * nx + x) + k];
-                }
-            }
-        }
-    }
+    ggml_set_name(inp, "inp");
+    ggml_set_input(inp);
 
     // patch embedding
     struct ggml_tensor *cur = ggml_conv_2d_sk_p0(ctx0, enc.proj_w, inp);
@@ -791,7 +772,7 @@ struct ggml_cgraph *vit_encode_image(
     cur = ggml_reshape_4d(ctx0, cur, hidden_size, n_img_embd * n_img_embd, 1, 1);
 
     // concat class embeddings(cls_token) : (768  1  1  1) with positional embeddings (pos_embed = cur) : (768  784  1  1)
-    cur = ggml_permute(ctx0, ggml_concat(ctx0, enc.cls_token, ggml_permute(ctx0, cur, 0, 2, 1, 3)),
+    cur = ggml_permute(ctx0, ggml_concat(ctx0, enc.cls_token, ggml_permute(ctx0, cur, 0, 2, 1, 3), 2),
                        0, 2, 1, 3); // 768  785  1  1
 
     cur = ggml_add_inplace(ctx0, cur, enc.pe);
@@ -851,7 +832,7 @@ struct ggml_cgraph *vit_encode_image(
             struct ggml_tensor *KQ_scaled =
                 ggml_scale_inplace(ctx0,
                                    KQ,
-                                   ggml_new_f32(ctx0, 1.0f / sqrtf(n_enc_head_dim)));
+                                   1.0f / sqrtf(n_enc_head_dim));
 
             struct ggml_tensor *KQ_soft_max = ggml_soft_max_inplace(ctx0, KQ_scaled);
 
@@ -907,8 +888,8 @@ struct ggml_cgraph *vit_encode_image(
     //
 
     // get the output of cls token at index 0
-    struct ggml_tensor *cls = ggml_new_i32(ctx0, 0);
-    cur = ggml_get_rows(ctx0, cur, cls);
+    struct ggml_tensor *cls_token = ggml_view_1d(ctx0, cur, hidden_size, 0);
+    cur = cls_token;
 
     // layer normalization
     {
@@ -936,6 +917,27 @@ struct ggml_cgraph *vit_encode_image(
     ggml_disconnect_node_from_graph(state.prediction);
 
     ggml_free(ctx0);
+
+    ggml_gallocr_alloc_graph(state.allocr, gf);
+
+    {
+        struct ggml_tensor * inp = ggml_graph_get_tensor(gf, "inp");
+        float * data = (float *) ggml_get_data(inp);
+
+        const int nx = img.nx;
+        const int ny = img.ny;
+        const int n  = nx*ny;
+
+        GGML_ASSERT(nx == n_img_size && ny == n_img_size);
+
+        for (int k = 0; k < 3; k++) {
+            for (int y = 0; y < ny; y++) {
+                for (int x = 0; x < nx; x++) {
+                    data[k*n + y*nx + x] = img.data[3*(y*nx + x) + k];
+                }
+            }
+        }
+    }
 
     return gf;
 }
@@ -1003,27 +1005,9 @@ bool vit_params_parse(int argc, char **argv, vit_params &params)
 
 int vit_predict(const vit_model &model, vit_state &state, const image_f32 img1, const vit_params &params, std::vector<std::pair<float, int>> &predictions)
 {
-    static const size_t tensor_alignment = 32;
-
     // first build the graph and record memory requirements
     state.buf_compute_img_enc.resize(ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead());
-    state.allocr = ggml_allocr_new_measure(tensor_alignment);
-    struct ggml_cgraph *gf_measure = vit_encode_image(model, state, img1);
-    if (!gf_measure)
-    {
-        fprintf(stderr, "%s: failed to encode image\n", __func__);
-        return 1;
-    }
-
-    size_t alloc_size = ggml_allocr_alloc_graph(state.allocr, gf_measure) + tensor_alignment;
-    ggml_allocr_free(state.allocr);
-
-    // recreate allocator with exact memory requirements
-    state.buf_alloc_img_enc.resize(alloc_size);
-    state.allocr = ggml_allocr_new(state.buf_alloc_img_enc.data(), state.buf_alloc_img_enc.size(), tensor_alignment);
-
-    // compute the graph with the measured exact memory requirements from above
-    ggml_allocr_reset(state.allocr);
+    state.allocr = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
 
     struct ggml_cgraph *gf = vit_encode_image(model, state, img1);
     if (!gf)
@@ -1032,7 +1016,7 @@ int vit_predict(const vit_model &model, vit_state &state, const image_f32 img1, 
         return 1;
     }
 
-    ggml_allocr_alloc_graph(state.allocr, gf);
+    ggml_gallocr_alloc_graph(state.allocr, gf);
     ggml_graph_compute_helper(state.work_buffer, gf, params.n_threads);
 
     // print_t_f32("after probs", state.prediction);
@@ -1067,7 +1051,7 @@ int vit_predict(const vit_model &model, vit_state &state, const image_f32 img1, 
     }
 
     // free memory
-    ggml_allocr_free(state.allocr);
+    ggml_gallocr_free(state.allocr);
     state.allocr = NULL;
     state.work_buffer.clear();
 

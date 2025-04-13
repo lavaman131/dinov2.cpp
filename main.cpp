@@ -1,8 +1,8 @@
 #define _CRT_SECURE_NO_DEPRECATE // disables "unsafe" warnings on Windows
 
 #include "vit.h"
-#include "ggml/ggml.h"
-#include "ggml/ggml-alloc.h"
+#include "ggml.h"
+#include "ggml-alloc.h"
 #include "ggml/examples/stb_image.h" // stb image load
 
 #include <cassert>
