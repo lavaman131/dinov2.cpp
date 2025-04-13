@@ -9,7 +9,7 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["torch", "timm", "hf_transfer"]
+dependencies = ["torch", "timm", "hf_transfer", "transformers[torch]"]
 
 [tool.uv.pip]
 torch-backend = "auto"

@@ -113,12 +113,9 @@ source .venv/bin/activate
 .venv\Scripts\activate
 uv sync --frozen
 
-# list available models if needed; note that not all models are supported
-python ./scripts/convert-pth-to-ggml.py --list
-
 # convert the weights to gguf : vit tiny with patch size of 16 and an image 
 # size of 384 pre-trained on ImageNet21k and fine-tuned on ImageNet1k
-python .scripts/convert-pth-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_in1k --ftype 1
+python ./scripts/convert-pth-to-ggml.py --model_name facebook/dinov2-small-imagenet1k-1-layer --ftype 1
 ```
 
 > **Note:** You can also download the converted weights from [Hugging Face](https://huggingface.co/staghado/vit.cpp)
