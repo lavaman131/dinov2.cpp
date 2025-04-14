@@ -17,7 +17,7 @@
 #include <cinttypes>
 #include <algorithm>
 
-struct vit_hparams {
+struct dino_hparams {
     int32_t hidden_size = 768;
     int32_t num_hidden_layers = 12;
     int32_t num_attention_heads = 12;
@@ -49,14 +49,14 @@ struct dino_block {
     struct ggml_tensor *v_b;
     struct ggml_tensor *dense_w;
     struct ggml_tensor *dense_b;
-    struct ggml_tensor *layer_scale1_lambda;
+    struct ggml_tensor *layer_scale1_lam;
     struct ggml_tensor *norm2_w;
     struct ggml_tensor *norm2_b;
     struct ggml_tensor *fc1_w;
     struct ggml_tensor *fc1_b;
     struct ggml_tensor *fc2_w;
     struct ggml_tensor *fc2_b;
-    struct ggml_tensor *layer_scale2_lambda;
+    struct ggml_tensor *layer_scale2_lam;
 };
 
 struct classifier_head {
@@ -66,15 +66,15 @@ struct classifier_head {
     struct ggml_tensor *head_b;
 };
 
-struct vit_image_encoder {
-    struct ggml_tensor *pe;
+struct dino_image_encoder {
+    struct ggml_tensor *pos_embed;
     struct ggml_tensor *cls_token;
-    struct ggml_tensor *proj_w;
-    struct ggml_tensor *proj_b;
-    std::vector<vit_block> layers;
+    struct ggml_tensor *patch_embed_w;
+    struct ggml_tensor *patch_embed_b;
+    std::vector<dino_block> layers;
 };
 
-struct vit_state {
+struct dino_state {
     struct ggml_tensor *prediction;
     struct ggml_context *ctx;
     std::vector<uint8_t> work_buffer;
@@ -83,9 +83,9 @@ struct vit_state {
     ggml_gallocr_t allocr = {};
 };
 
-struct vit_model {
-    vit_hparams hparams;
-    vit_image_encoder enc_img;
+struct dino_model {
+    dino_hparams hparams;
+    dino_image_encoder enc_img;
     classifier_head classifier;
     struct ggml_context *ctx;
     std::map<std::string, struct ggml_tensor *> tensors;
@@ -103,7 +103,7 @@ struct image_f32 {
     std::vector<float> data;
 };
 
-struct vit_params {
+struct dino_params {
     int32_t seed = -1;
     int32_t n_threads = std::min(4, (int32_t) std::thread::hardware_concurrency());
     int32_t topk = 5;
@@ -120,15 +120,15 @@ void ggml_graph_compute_helper(std::vector<uint8_t> &buf, ggml_cgraph *graph, in
 
 bool load_image_from_file(const std::string &fname, image_u8 &img);
 
-bool vit_image_preprocess(const image_u8 &img, image_f32 &res, const vit_hparams &params);
+bool dino_image_preprocess(const image_u8 &img, image_f32 &res, const dino_hparams &params);
 
-bool vit_model_load(const std::string &fname, vit_model &model);
+bool dino_model_load(const std::string &fname, dino_model &model);
 
-struct ggml_cgraph *vit_encode_image(const vit_model &model, vit_state &state, const image_f32 &img);
+struct ggml_cgraph *dino_encode_image(const dino_model &model, dino_state &state, const image_f32 &img);
 
-int vit_predict(const vit_model &model, vit_state &state, const image_f32 img1, const vit_params &params,
-                std::vector<std::pair<float, int> > &predictions);
+int dino_predict(const dino_model &model, dino_state &state, const image_f32 img1, const dino_params &params,
+                 std::vector<std::pair<float, int> > &predictions);
 
-void print_usage(int argc, char **argv, const vit_params &params);
+void print_usage(int argc, char **argv, const dino_params &params);
 
-bool vit_params_parse(int argc, char **argv, vit_params &params);
+bool dino_params_parse(int argc, char **argv, dino_params &params);

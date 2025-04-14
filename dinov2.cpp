@@ -26,21 +26,19 @@
 #pragma warning(disable : 4244 4267) // possible loss of data
 #endif
 
-// default ViT-B hparams
-// vit_base_patch8_224.augreg2_in21k_ft_in1k from timm
-int32_t vit_hparams::n_enc_head_dim() const {
+int32_t dino_hparams::n_enc_head_dim() const {
     return hidden_size / num_attention_heads;
 }
 
-int32_t vit_hparams::n_img_size() const {
+int32_t dino_hparams::n_img_size() const {
     return img_size;
 }
 
-int32_t vit_hparams::n_patch_size() const {
+int32_t dino_hparams::n_patch_size() const {
     return patch_size;
 }
 
-int32_t vit_hparams::n_img_embd() const {
+int32_t dino_hparams::n_img_embd() const {
     return n_img_size() / n_patch_size();
 }
 
@@ -112,7 +110,7 @@ bool load_image_from_file(const std::string &fname, image_u8 &img) {
 }
 
 // preprocess input image : bilinear resize + normalize
-bool vit_image_preprocess_bilinear(const image_u8 &img, image_f32 &res, const vit_hparams &params) {
+bool dino_image_preprocess_bilinear(const image_u8 &img, image_f32 &res, const dino_hparams &params) {
     const int nx = img.nx;
     const int ny = img.ny;
 
@@ -181,7 +179,7 @@ float clip(float x, float lower, float upper) {
 }
 
 // preprocess input image : bicubic resize + normalize
-bool vit_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const vit_hparams &params) {
+bool dino_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const dino_hparams &params) {
     const int nx = img.nx;
     const int ny = img.ny;
 
@@ -264,12 +262,12 @@ bool vit_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const vit
     return true;
 }
 
-bool vit_image_preprocess(const image_u8 &img, image_f32 &res, const vit_hparams &params) {
+bool dino_image_preprocess(const image_u8 &img, image_f32 &res, const dino_hparams &params) {
     const std::string mode = params.interpolation.c_str();
     if (mode == "bilinear") {
-        return vit_image_preprocess_bilinear(img, res, params);
+        return dino_image_preprocess_bilinear(img, res, params);
     } else if (mode == "bicubic") {
-        return vit_image_preprocess_bicubic(img, res, params);
+        return dino_image_preprocess_bicubic(img, res, params);
     } else {
         std::cout << "Interpolation mode '" << mode << "' is not supported; returning 'false'...";
         return false;
@@ -277,7 +275,7 @@ bool vit_image_preprocess(const image_u8 &img, image_f32 &res, const vit_hparams
 }
 
 // load the model's weights from a file following the ggml format(gguf)
-bool vit_model_load(const std::string &fname, vit_model &model) {
+bool dino_model_load(const std::string &fname, dino_model &model) {
     printf("%s: loading model from '%s' - please wait\n", __func__, fname.c_str());
 
     auto fin = std::ifstream(fname, std::ios::binary);
@@ -473,17 +471,17 @@ bool vit_model_load(const std::string &fname, vit_model &model) {
         {
             auto &enc = model.enc_img;
 
-            enc.pe = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, hidden_size, n_img_embd * n_img_embd + 1, 1);
+            enc.pos_embed = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, hidden_size, n_img_embd * n_img_embd + 1, 1);
             enc.cls_token = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, hidden_size, 1, 1);
 
-            enc.proj_w = ggml_new_tensor_4d(ctx, GGML_TYPE_F16, n_patch_size, n_patch_size, 3, hidden_size);
-            enc.proj_b = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, 1, 1, hidden_size);
+            enc.patch_embed_w = ggml_new_tensor_4d(ctx, GGML_TYPE_F16, n_patch_size, n_patch_size, 3, hidden_size);
+            enc.patch_embed_b = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, 1, 1, hidden_size);
 
-            model.tensors["pos_embed"] = enc.pe;
+            model.tensors["pos_embed"] = enc.pos_embed;
             model.tensors["cls_token"] = enc.cls_token;
 
-            model.tensors["patch_embed.proj.weight"] = enc.proj_w;
-            model.tensors["patch_embed.proj.bias"] = enc.proj_b;
+            model.tensors["patch_embed.proj.weight"] = enc.patch_embed_w;
+            model.tensors["patch_embed.proj.bias"] = enc.patch_embed_b;
 
             for (int i = 0; i < num_hidden_layers; ++i) {
                 auto &layer = enc.layers[i];
@@ -491,9 +489,10 @@ bool vit_model_load(const std::string &fname, vit_model &model) {
                 layer.norm1_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
                 layer.norm1_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
-                layer.query_w =
+                layer.q_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
+                layer.q_b = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
 
-                        layer.qkv_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, 3 * hidden_size);
+                layer.qkv_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, 3 * hidden_size);
                 layer.qkv_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 3 * hidden_size);
 
                 layer.proj_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
@@ -671,12 +670,12 @@ bool vit_model_load(const std::string &fname, vit_model &model) {
 }
 
 //
-// ViT Encoder
+// DINOv2 Encoder
 //
 
-struct ggml_cgraph *vit_encode_image(
-    const vit_model &model,
-    vit_state &state,
+struct ggml_cgraph *dino_encode_image(
+    const dino_model &model,
+    dino_state &state,
     const image_f32 &img) {
     const auto &hparams = model.hparams;
     const auto &enc = model.enc_img;
@@ -897,7 +896,7 @@ struct ggml_cgraph *vit_encode_image(
     return gf;
 }
 
-void print_usage(int argc, char **argv, const vit_params &params) {
+void print_usage(int argc, char **argv, const dino_params &params) {
     fprintf(stderr, "usage: %s [options]\n", argv[0]);
     fprintf(stderr, "\n");
     fprintf(stderr, "options:\n");
@@ -912,7 +911,7 @@ void print_usage(int argc, char **argv, const vit_params &params) {
     fprintf(stderr, "\n");
 }
 
-bool vit_params_parse(int argc, char **argv, vit_params &params) {
+bool dino_params_parse(int argc, char **argv, dino_params &params) {
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
 
@@ -941,13 +940,13 @@ bool vit_params_parse(int argc, char **argv, vit_params &params) {
     return true;
 }
 
-int vit_predict(const vit_model &model, vit_state &state, const image_f32 img1, const vit_params &params,
-                std::vector<std::pair<float, int> > &predictions) {
+int dino_predict(const dino_model &model, dino_state &state, const image_f32 img1, const dino_params &params,
+                 std::vector<std::pair<float, int> > &predictions) {
     // first build the graph and record memory requirements
     state.buf_compute_img_enc.resize(ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead());
     state.allocr = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
 
-    struct ggml_cgraph *gf = vit_encode_image(model, state, img1);
+    struct ggml_cgraph *gf = dino_encode_image(model, state, img1);
     if (!gf) {
         fprintf(stderr, "%s: failed to encode image\n", __func__);
         return 1;

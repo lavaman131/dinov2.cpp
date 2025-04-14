@@ -3,7 +3,7 @@ import struct
 from typing import Dict, BinaryIO
 import numpy as np
 import torch
-from transformers import AutoModel, AutoConfig, Dinov2ForImageClassification
+from transformers import AutoModel, AutoConfig, AutoModelForImageClassification
 
 GGML_MAGIC = 0x67676d6c
 
@@ -19,13 +19,6 @@ def get_args() -> argparse.Namespace:
         default="facebook/dinov2-small-imagenet1k-1-layer",
         help="HuggingFace model name",
     )
-    parser.add_argument(
-        "--ftype",
-        type=int,
-        choices=[0, 1],
-        default=1,
-        help="float type: 0 for float32, 1 for float16",
-    )
     args = parser.parse_args()
     return args
 
@@ -33,11 +26,11 @@ def get_args() -> argparse.Namespace:
 def main() -> None:
     args = get_args()
     # Output file name
-    fname_out = f"./ggml-model-{['f32', 'f16'][args.ftype]}.gguf"
+    fname_out = f"./ggml-model-f16.gguf"
 
     # Load the pretrained model
     # model = AutoModel.from_pretrained(args.model_name)
-    model = Dinov2ForImageClassification.from_pretrained(args.model_name)
+    model = AutoModelForImageClassification.from_pretrained(args.model_name)
     config = AutoConfig.from_pretrained(args.model_name)
 
     id2label = config.id2label
@@ -52,12 +45,14 @@ def main() -> None:
         "img_size": config.image_size,
     }
 
+    ftype = 1  # float16
+
     # Write to file
     with open(fname_out, "wb") as fout:
         fout.write(struct.pack("i", GGML_MAGIC))  # Magic: ggml in hex
         for param in hparams.values():
             fout.write(struct.pack("i", param))
-        fout.write(struct.pack("i", args.ftype))
+        fout.write(struct.pack("i", ftype))
 
         # Write id2label dictionary to the file
         write_id2label(fout, id2label)
@@ -74,7 +69,7 @@ def main() -> None:
                 " and type: ",
                 v.dtype,
             )
-            process_and_write_variable(fout, k, v, args.ftype)
+            process_and_write_variable(fout, k, v, ftype)
 
         print("Done. Output file: " + fname_out)
 
@@ -90,18 +85,16 @@ def write_id2label(file: BinaryIO, id2label: Dict[str, str]) -> None:
 
 def process_and_write_variable(file: BinaryIO, name: str, tensor: torch.Tensor, ftype: int) -> None:
     data = tensor.numpy()
-    ftype_cur = (
-        1
-        if ftype == 1 and tensor.ndim != 1 and name not in {"pos_embed", "cls_token", "register_tokens"}
-        else 0
-    )
-    data = data.astype(np.float32) if ftype_cur == 0 else data.astype(np.float16)
 
-    if name == "patch_embed.proj.bias":
+    name_without_prefix = ".".join(name.split(".")[1:])
+
+    data = data.astype(np.float32) if ftype == 0 else data.astype(np.float16)
+
+    if name_without_prefix == "embeddings.patch_embeddings.projection.bias":
         data = data.reshape(1, data.shape[0], 1, 1)
 
     str_name = name.encode("utf-8")
-    file.write(struct.pack("iii", len(data.shape), len(str_name), ftype_cur))
+    file.write(struct.pack("iii", len(data.shape), len(str_name), ftype))
     for dim_size in reversed(data.shape):
         file.write(struct.pack("i", dim_size))
     file.write(str_name)
