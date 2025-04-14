@@ -491,7 +491,9 @@ bool vit_model_load(const std::string &fname, vit_model &model) {
                 layer.norm1_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
                 layer.norm1_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
-                layer.qkv_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, 3 * hidden_size);
+                layer.query_w =
+
+                        layer.qkv_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, 3 * hidden_size);
                 layer.qkv_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 3 * hidden_size);
 
                 layer.proj_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);

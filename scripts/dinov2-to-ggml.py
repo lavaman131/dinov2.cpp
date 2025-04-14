@@ -3,7 +3,7 @@ import struct
 from typing import Dict, BinaryIO
 import numpy as np
 import torch
-from transformers import AutoImageProcessor, AutoModel, AutoConfig
+from transformers import AutoModel, AutoConfig, Dinov2ForImageClassification
 
 GGML_MAGIC = 0x67676d6c
 
@@ -36,7 +36,8 @@ def main() -> None:
     fname_out = f"./ggml-model-{['f32', 'f16'][args.ftype]}.gguf"
 
     # Load the pretrained model
-    model = AutoModel.from_pretrained(args.model_name)
+    # model = AutoModel.from_pretrained(args.model_name)
+    model = Dinov2ForImageClassification.from_pretrained(args.model_name)
     config = AutoConfig.from_pretrained(args.model_name)
 
     id2label = config.id2label

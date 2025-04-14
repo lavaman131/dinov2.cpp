@@ -38,19 +38,25 @@ struct vit_hparams {
     int32_t n_img_embd() const;
 };
 
-struct vit_block {
+struct dino_block {
     struct ggml_tensor *norm1_w;
     struct ggml_tensor *norm1_b;
-    struct ggml_tensor *qkv_w;
-    struct ggml_tensor *qkv_b;
-    struct ggml_tensor *proj_w;
-    struct ggml_tensor *proj_b;
+    struct ggml_tensor *q_w;
+    struct ggml_tensor *q_b;
+    struct ggml_tensor *k_w;
+    struct ggml_tensor *k_b;
+    struct ggml_tensor *v_w;
+    struct ggml_tensor *v_b;
+    struct ggml_tensor *dense_w;
+    struct ggml_tensor *dense_b;
+    struct ggml_tensor *layer_scale1_lambda;
     struct ggml_tensor *norm2_w;
     struct ggml_tensor *norm2_b;
-    struct ggml_tensor *mlp_lin1_w;
-    struct ggml_tensor *mlp_lin1_b;
-    struct ggml_tensor *mlp_lin2_w;
-    struct ggml_tensor *mlp_lin2_b;
+    struct ggml_tensor *fc1_w;
+    struct ggml_tensor *fc1_b;
+    struct ggml_tensor *fc2_w;
+    struct ggml_tensor *fc2_b;
+    struct ggml_tensor *layer_scale2_lambda;
 };
 
 struct classifier_head {
