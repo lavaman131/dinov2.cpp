@@ -470,60 +470,76 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
         // image encoder
         {
             auto &enc = model.enc_img;
+            enc.pos_embed = ggml_new_tensor_3d(ctx, wtype, hidden_size, n_img_embd * n_img_embd + 1, 1);
+            enc.cls_token = ggml_new_tensor_3d(ctx, wtype, hidden_size, 1, 1);
 
-            enc.pos_embed = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, hidden_size, n_img_embd * n_img_embd + 1, 1);
-            enc.cls_token = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, hidden_size, 1, 1);
+            enc.patch_embed_w = ggml_new_tensor_4d(ctx, wtype, n_patch_size, n_patch_size, 3, hidden_size);
+            enc.patch_embed_b = ggml_new_tensor_3d(ctx, wtype, 1, 1, hidden_size);
 
-            enc.patch_embed_w = ggml_new_tensor_4d(ctx, GGML_TYPE_F16, n_patch_size, n_patch_size, 3, hidden_size);
-            enc.patch_embed_b = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, 1, 1, hidden_size);
+            model.tensors["embeddings.position_embeddings"] = enc.pos_embed;
+            model.tensors["embeddings.cls_token"] = enc.cls_token;
 
-            model.tensors["pos_embed"] = enc.pos_embed;
-            model.tensors["cls_token"] = enc.cls_token;
-
-            model.tensors["patch_embed.proj.weight"] = enc.patch_embed_w;
-            model.tensors["patch_embed.proj.bias"] = enc.patch_embed_b;
+            model.tensors["embeddings.patch_embeddings.projection.weight"] = enc.patch_embed_w;
+            model.tensors["embeddings.patch_embeddings.projection.bias"] = enc.patch_embed_b;
 
             for (int i = 0; i < num_hidden_layers; ++i) {
                 auto &layer = enc.layers[i];
 
-                layer.norm1_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
-                layer.norm1_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
+                layer.norm1_w = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.norm1_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
                 layer.q_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
-                layer.q_b = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
+                layer.q_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                layer.qkv_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, 3 * hidden_size);
-                layer.qkv_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 3 * hidden_size);
+                layer.k_w = ggml_new_tensor_2d(ctx, wtype, hidden_size,hidden_size);
+                layer.k_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                layer.proj_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
-                layer.proj_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
+                layer.v_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
+                layer.v_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                layer.norm2_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
-                layer.norm2_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
+                layer.dense_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
+                layer.dense_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                layer.mlp_lin1_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, 4 * hidden_size);
-                layer.mlp_lin1_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 4 * hidden_size);
+                layer.layer_scale1_lam = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                layer.mlp_lin2_w = ggml_new_tensor_2d(ctx, wtype, 4 * hidden_size, hidden_size);
-                layer.mlp_lin2_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
+                layer.norm2_w = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.norm2_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                model.tensors["blocks." + std::to_string(i) + ".norm1.weight"] = layer.norm1_w;
-                model.tensors["blocks." + std::to_string(i) + ".norm1.bias"] = layer.norm1_b;
+                layer.fc1_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, 4 * hidden_size);
+                layer.fc1_b = ggml_new_tensor_1d(ctx, wtype, 4 * hidden_size);
 
-                model.tensors["blocks." + std::to_string(i) + ".attn.qkv.weight"] = layer.qkv_w;
-                model.tensors["blocks." + std::to_string(i) + ".attn.qkv.bias"] = layer.qkv_b;
+                layer.fc2_w = ggml_new_tensor_2d(ctx, wtype, 4 * hidden_size, hidden_size);
+                layer.fc2_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                model.tensors["blocks." + std::to_string(i) + ".attn.proj.weight"] = layer.proj_w;
-                model.tensors["blocks." + std::to_string(i) + ".attn.proj.bias"] = layer.proj_b;
+                layer.layer_scale2_lam = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                model.tensors["blocks." + std::to_string(i) + ".norm2.weight"] = layer.norm2_w;
-                model.tensors["blocks." + std::to_string(i) + ".norm2.bias"] = layer.norm2_b;
+                model.tensors["encoder.layer." + std::to_string(i) + ".norm1.weight"] = layer.norm1_w;
+                model.tensors["encoder.layer." + std::to_string(i) + ".norm1.bias"] = layer.norm1_b;
 
-                model.tensors["blocks." + std::to_string(i) + ".mlp.fc1.weight"] = layer.mlp_lin1_w;
-                model.tensors["blocks." + std::to_string(i) + ".mlp.fc1.bias"] = layer.mlp_lin1_b;
+                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.query.weight"] = layer.q_w;
+                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.query.bias"] = layer.q_b;
 
-                model.tensors["blocks." + std::to_string(i) + ".mlp.fc2.weight"] = layer.mlp_lin2_w;
-                model.tensors["blocks." + std::to_string(i) + ".mlp.fc2.bias"] = layer.mlp_lin2_b;
+                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.key.weight"] = layer.k_w;
+                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.key.bias"] = layer.k_b;
+
+                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.value.weight"] = layer.v_w;
+                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.value.bias"] = layer.v_b;
+
+                model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.dense.weight"] = layer.dense_w;
+                model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.dense.bias"] = layer.dense_b;
+                
+                model.tensors["encoder.layer." + std::to_string(i) + ".layer_scale1.lambda1"] = layer.layer_scale1_lam;
+
+                model.tensors["encoder.layer." + std::to_string(i) + ".norm2.weight"] = layer.norm2_w;
+                model.tensors["encoder.layer." + std::to_string(i) + ".norm2.bias"] = layer.norm2_b;
+                
+                model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc1.weight"] = layer.fc1_w;
+                model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc1.bias"] = layer.fc1_b;
+
+                model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc2.weight"] = layer.fc2_w;
+                model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc2.bias"] = layer.fc2_b;
+
+                model.tensors["encoder.layer." + std::to_string(i) + ".layer_scale2.lambda1"] = layer.layer_scale2_lam;
             }
         }
 
@@ -531,17 +547,17 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
         {
             auto &classifier = model.classifier;
 
-            classifier.norm_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
-            classifier.norm_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
+            classifier.norm_w = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+            classifier.norm_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-            classifier.head_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, num_classes);
-            classifier.head_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, num_classes);
+            classifier.head_w = ggml_new_tensor_2d(ctx, wtype, hidden_size * 2, num_classes);
+            classifier.head_b = ggml_new_tensor_1d(ctx, wtype, num_classes);
 
-            model.tensors["norm.weight"] = classifier.norm_w;
-            model.tensors["norm.bias"] = classifier.norm_b;
+            model.tensors["layernorm.weight"] = classifier.norm_w;
+            model.tensors["layernorm.bias"] = classifier.norm_b;
 
-            model.tensors["head.weight"] = classifier.head_w;
-            model.tensors["head.bias"] = classifier.head_b;
+            model.tensors["classifier.weight"] = classifier.head_w;
+            model.tensors["classifier.bias"] = classifier.head_b;
         }
 
         // load weights
