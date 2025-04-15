@@ -86,7 +86,14 @@ def write_id2label(file: BinaryIO, id2label: Dict[str, str]) -> None:
 def process_and_write_variable(file: BinaryIO, name: str, tensor: torch.Tensor, ftype: int) -> None:
     data = tensor.numpy()
 
-    name_without_prefix = ".".join(name.split(".")[1:])
+    name_without_prefix = name
+
+    if name_without_prefix.startswith("dinov2"):
+        name_without_prefix = ".".join(name.split(".")[1:])
+
+    if name_without_prefix == "embeddings.mask_token":
+        # Skip the mask token
+        return
 
     data = data.astype(np.float32) if ftype == 0 else data.astype(np.float16)
 
