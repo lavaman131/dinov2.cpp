@@ -395,32 +395,32 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
         // image encoder
         {
-            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);
-            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size * (n_img_embd * n_img_embd + 1));
+            ctx_size += ggml_row_size(wtype, hidden_size);
+            ctx_size += ggml_row_size(wtype, hidden_size * (n_img_embd * n_img_embd + 1));
 
-            ctx_size += ggml_row_size(GGML_TYPE_F16, hidden_size * 3 * n_patch_size * n_patch_size);
-            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += ggml_row_size(wtype, hidden_size * 3 * n_patch_size * n_patch_size);
+            ctx_size += ggml_row_size(wtype, hidden_size);
         }
 
         // image encoder layers
         {
-            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 3 * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
-            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
-
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 4 * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 4 * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size);
+
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size);
         }
 
         // dig into this more later!
@@ -428,9 +428,9 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
         // classifier
         {
-            ctx_size += ggml_row_size(GGML_TYPE_F32, 2 * hidden_size);
+            ctx_size += ggml_row_size(wtype, 2 * hidden_size);
             ctx_size += ggml_row_size(wtype, num_classes * hidden_size);
-            ctx_size += ggml_row_size(GGML_TYPE_F32, num_classes);
+            ctx_size += ggml_row_size(wtype, num_classes);
         }
 
         fprintf(stderr, "%s: ggml ctx size = %6.2f MB\n", __func__, ctx_size / (1024.0 * 1024.0));
@@ -491,7 +491,7 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
                 layer.q_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
                 layer.q_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
-                layer.k_w = ggml_new_tensor_2d(ctx, wtype, hidden_size,hidden_size);
+                layer.k_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
                 layer.k_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
 
                 layer.v_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
@@ -527,12 +527,12 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
                 model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.dense.weight"] = layer.dense_w;
                 model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.dense.bias"] = layer.dense_b;
-                
+
                 model.tensors["encoder.layer." + std::to_string(i) + ".layer_scale1.lambda1"] = layer.layer_scale1_lam;
 
                 model.tensors["encoder.layer." + std::to_string(i) + ".norm2.weight"] = layer.norm2_w;
                 model.tensors["encoder.layer." + std::to_string(i) + ".norm2.bias"] = layer.norm2_b;
-                
+
                 model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc1.weight"] = layer.fc1_w;
                 model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc1.bias"] = layer.fc1_b;
 
@@ -689,230 +689,230 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 // DINOv2 Encoder
 //
 
-/*
-struct ggml_cgraph *dino_encode_image(
-    const dino_model &model,
-    dino_state &state,
-    const image_f32 &img) {
-    const auto &hparams = model.hparams;
-    const auto &enc = model.enc_img;
-    const auto &classifier = model.classifier;
 
-    const int32_t hidden_size = hparams.hidden_size;
-    const int32_t num_hidden_layers = hparams.num_hidden_layers;
-    const int32_t num_attention_heads = hparams.num_attention_heads;
-    const int32_t num_classes = hparams.num_classes;
-    const int32_t n_img_size = hparams.img_size;
-    const int32_t n_enc_head_dim = hparams.n_enc_head_dim();
-
-    const int32_t n_img_embd = hparams.n_img_embd();
-    const int32_t n_patch_size = hparams.n_patch_size();
-*/
-   // struct ggml_init_params ggml_params = {
-    //    /*.mem_size   =*/state.buf_compute_img_enc.size(),
-    //    /*.mem_buffer =*/state.buf_compute_img_enc.data(),
-    //    /*.no_alloc   =*/true, // skip allocating as we use ggml_alloc to allocate exact memory requirements
-   //}; 
-
-   /*
-    struct ggml_context *ctx0 = ggml_init(ggml_params);
-    struct ggml_cgraph *gf = ggml_new_graph(ctx0);
-
-    struct ggml_tensor *inp = ggml_new_tensor_4d(ctx0, GGML_TYPE_F32, n_img_size, n_img_size, 3, 1);
-    ggml_set_name(inp, "inp");
-    ggml_set_input(inp);
-
-    // patch embedding
-    struct ggml_tensor *cur = ggml_conv_2d_sk_p0(ctx0, enc.proj_w, inp);
-    cur = ggml_add_inplace(ctx0,
-                           cur,
-                           ggml_repeat(ctx0, enc.proj_b, cur));
-
-    // keep in F32
-    cur = ggml_cont(ctx0,
-                    ggml_permute(ctx0, cur, 1, 2, 0, 3));
-
-    // convert to F16
-    // cur = ggml_cpy(ctx0,
-    //                ggml_permute(ctx0, cur, 1, 2, 0, 3),
-    //                ggml_new_tensor_3d(ctx0, GGML_TYPE_F16, hidden_size, n_img_embd, n_img_embd));
-
-    // add positional embedding
-    // cur dim     : 768  28  28  1
-    // enc.pe dim  : 768  785  1  1
-
-    // reshape patch embeddings from (768  28  28  1) to (768  784  1  1)
-    cur = ggml_reshape_4d(ctx0, cur, hidden_size, n_img_embd * n_img_embd, 1, 1);
-
-    // concat class embeddings(cls_token) : (768  1  1  1) with positional embeddings (pos_embed = cur) : (768  784  1  1)
-    cur = ggml_permute(ctx0, ggml_concat(ctx0, enc.cls_token, ggml_permute(ctx0, cur, 0, 2, 1, 3), 2),
-                       0, 2, 1, 3); // 768  785  1  1
-
-    cur = ggml_add_inplace(ctx0, cur, enc.pe);
-
-    struct ggml_tensor *inpL = cur;
-
-    // loop over layers
-    for (int il = 0; il < num_hidden_layers; ++il) {
-        const auto &layer = enc.layers[il];
-
-        // norm 1
-        {
-            cur = ggml_norm(ctx0, inpL, hparams.eps);
-
-            // cur = w * cur + b
-            cur = ggml_mul(ctx0, cur, layer.norm1_w);
-            cur = ggml_add_inplace(ctx0, cur, layer.norm1_b);
-        }
-
-        const int64_t W = cur->ne[1];
-        const int64_t H = cur->ne[2];
-
-        // self-attention
-        {
-            cur = ggml_mul_mat(ctx0, layer.qkv_w, cur);
-            cur = ggml_add_inplace(ctx0, cur, layer.qkv_b);
-
-            // split qkv into separate tensors
-            const int B = cur->ne[3];
-
-            cur = ggml_reshape_4d(ctx0, cur, hidden_size, 3, W * H, B);
-            cur = ggml_cont(ctx0, ggml_permute(ctx0, cur, 0, 3, 1, 2));
-
-            struct ggml_tensor *Q;
-            struct ggml_tensor *K;
-            struct ggml_tensor *V;
-
-            Q = ggml_view_3d(ctx0, cur, hidden_size, W * H, B, cur->nb[1], cur->nb[2], 0 * cur->nb[3]);
-            Q = ggml_reshape_4d(ctx0, Q, n_enc_head_dim, num_attention_heads, W * H, B);
-            Q = ggml_cont(ctx0, ggml_permute(ctx0, Q, 0, 2, 1, 3));
-            Q = ggml_reshape_3d(ctx0, Q, n_enc_head_dim, W * H, B * num_attention_heads);
-
-            K = ggml_view_3d(ctx0, cur, hidden_size, W * H, B, cur->nb[1], cur->nb[2], 1 * cur->nb[3]);
-            K = ggml_reshape_4d(ctx0, K, n_enc_head_dim, num_attention_heads, W * H, B);
-            K = ggml_cont(ctx0, ggml_permute(ctx0, K, 0, 2, 1, 3));
-            K = ggml_reshape_3d(ctx0, K, n_enc_head_dim, W * H, B * num_attention_heads);
-
-            V = ggml_view_3d(ctx0, cur, hidden_size, W * H, B, cur->nb[1], cur->nb[2], 2 * cur->nb[3]);
-            V = ggml_reshape_4d(ctx0, V, n_enc_head_dim, num_attention_heads, W * H, B);
-            V = ggml_cont(ctx0, ggml_permute(ctx0, V, 1, 2, 0, 3)); // transposed
-            V = ggml_reshape_3d(ctx0, V, W * H, n_enc_head_dim, B * num_attention_heads);
-
-            struct ggml_tensor *KQ = ggml_mul_mat(ctx0, K, Q);
-
-            // attention weights
-            struct ggml_tensor *KQ_scaled =
-                    ggml_scale_inplace(ctx0,
-                                       KQ,
-                                       1.0f / sqrtf(n_enc_head_dim));
-
-            struct ggml_tensor *KQ_soft_max = ggml_soft_max_inplace(ctx0, KQ_scaled);
-
-            struct ggml_tensor *KQV = ggml_mul_mat(ctx0, V, KQ_soft_max);
-
-            cur =
-                    ggml_reshape_4d(ctx0,
-                                    ggml_cont(ctx0,
-                                              ggml_permute(ctx0,
-                                                           ggml_reshape_4d(
-                                                               ctx0, KQV, n_enc_head_dim, W * H, num_attention_heads,
-                                                               B),
-                                                           0, 2, 1, 3)),
-                                    hidden_size, W, H, B);
-
-            cur = ggml_mul_mat(ctx0, layer.proj_w, cur);
-            cur = ggml_add_inplace(ctx0, cur, layer.proj_b);
-        }
-
-        // add skip connection
-        cur = ggml_add_inplace(ctx0, cur, inpL);
-
-        struct ggml_tensor *inpFF = cur;
-
-        // feed-forward network
-        {
-            // norm 2
-            {
-                cur = ggml_norm(ctx0, inpFF, hparams.eps);
-
-                // cur = w * cur + b
-                cur = ggml_mul(ctx0, cur, layer.norm2_w);
-                cur = ggml_add_inplace(ctx0, cur, layer.norm2_b);
-            }
-
-            // fully connected layer
-            cur = ggml_mul_mat(ctx0, layer.mlp_lin1_w, cur);
-            cur = ggml_add_inplace(ctx0, cur, layer.mlp_lin1_b);
-
-            // GELU activation
-            cur = ggml_gelu(ctx0, cur);
-
-            // projection
-            cur = ggml_mul_mat(ctx0, layer.mlp_lin2_w, cur);
-            cur = ggml_add_inplace(ctx0, cur, layer.mlp_lin2_b);
-        }
-
-        inpL = ggml_add(ctx0, cur, inpFF);
-    }
-
-    cur = inpL;
-
-    //
-    // pooling
-    //
-
-    // get the output of cls token at index 0
-    struct ggml_tensor *cls_token = ggml_view_1d(ctx0, cur, hidden_size, 0);
-    cur = cls_token;
-
-    // layer normalization
-    {
-        cur = ggml_norm(ctx0, cur, hparams.eps);
-
-        // cur = w * cur + b
-        cur = ggml_mul(ctx0, cur, classifier.norm_w);
-        cur = ggml_add_inplace(ctx0, cur, classifier.norm_b);
-    }
-
-    //
-    // classification head
-    //
-
-    // projection
-    cur = ggml_mul_mat(ctx0, classifier.head_w, cur);
-    cur = ggml_add_inplace(ctx0, cur, classifier.head_b);
-
-    // softmax
-    ggml_tensor *probs = ggml_soft_max(ctx0, cur);
-
-    probs = ggml_cpy(ctx0, probs, state.prediction);
-
-    ggml_build_forward_expand(gf, probs);
-    ggml_disconnect_node_from_graph(state.prediction);
-
-    ggml_free(ctx0);
-
-    ggml_gallocr_alloc_graph(state.allocr, gf); {
-        struct ggml_tensor *inp = ggml_graph_get_tensor(gf, "inp");
-        float *data = (float *) ggml_get_data(inp);
-
-        const int nx = img.nx;
-        const int ny = img.ny;
-        const int n = nx * ny;
-
-        GGML_ASSERT(nx == n_img_size && ny == n_img_size);
-
-        for (int k = 0; k < 3; k++) {
-            for (int y = 0; y < ny; y++) {
-                for (int x = 0; x < nx; x++) {
-                    data[k * n + y * nx + x] = img.data[3 * (y * nx + x) + k];
-                }
-            }
-        }
-    }
-
-    return gf;
-}
+// struct ggml_cgraph *dino_encode_image(
+//     const dino_model &model,
+//     dino_state &state,
+//     const image_f32 &img) {
+//     const auto &hparams = model.hparams;
+//     const auto &enc = model.enc_img;
+//     const auto &classifier = model.classifier;
+//
+//     const int32_t hidden_size = hparams.hidden_size;
+//     const int32_t num_hidden_layers = hparams.num_hidden_layers;
+//     const int32_t num_attention_heads = hparams.num_attention_heads;
+//     const int32_t num_classes = hparams.num_classes;
+//     const int32_t n_img_size = hparams.img_size;
+//     const int32_t n_enc_head_dim = hparams.n_enc_head_dim();
+//
+//     const int32_t n_img_embd = hparams.n_img_embd();
+//     const int32_t n_patch_size = hparams.n_patch_size();
+//
+//     struct ggml_init_params ggml_params = {
+//         /*.mem_size   =*/state.buf_compute_img_enc.size(),
+//         /*.mem_buffer =*/state.buf_compute_img_enc.data(),
+//         /*.no_alloc   =*/true, // skip allocating as we use ggml_alloc to allocate exact memory requirements
+//     };
+//
+//
+//     struct ggml_context *ctx0 = ggml_init(ggml_params);
+//     struct ggml_cgraph *gf = ggml_new_graph(ctx0);
+//
+//     struct ggml_tensor *inp = ggml_new_tensor_4d(ctx0, GGML_TYPE_F32, n_img_size, n_img_size, 3, 1);
+//     ggml_set_name(inp, "inp");
+//     ggml_set_input(inp);
+//
+//     // patch embedding
+//     struct ggml_tensor *cur = ggml_conv_2d_sk_p0(ctx0, enc.proj_w, inp);
+//     cur = ggml_add_inplace(ctx0,
+//                            cur,
+//                            ggml_repeat(ctx0, enc.proj_b, cur));
+//
+//     // keep in F32
+//     cur = ggml_cont(ctx0,
+//                     ggml_permute(ctx0, cur, 1, 2, 0, 3));
+//
+//     // convert to F16
+//     cur = ggml_cpy(ctx0,
+//                    ggml_permute(ctx0, cur, 1, 2, 0, 3),
+//                    ggml_new_tensor_3d(ctx0, GGML_TYPE_F16, hidden_size, n_img_embd, n_img_embd));
+//
+//     // add positional embedding
+//     // cur dim     : 768  28  28  1
+//     // enc.pe dim  : 768  785  1  1
+//
+//     // reshape patch embeddings from (768  28  28  1) to (768  784  1  1)
+//     cur = ggml_reshape_4d(ctx0, cur, hidden_size, n_img_embd * n_img_embd, 1, 1);
+//
+//     // concat class embeddings(cls_token) : (768  1  1  1) with positional embeddings (pos_embed = cur) : (768  784  1  1)
+//     cur = ggml_permute(ctx0, ggml_concat(ctx0, enc.cls_token, ggml_permute(ctx0, cur, 0, 2, 1, 3), 2),
+//                        0, 2, 1, 3); // 768  785  1  1
+//
+//     cur = ggml_add_inplace(ctx0, cur, enc.pe);
+//
+//     struct ggml_tensor *inpL = cur;
+//
+//     // loop over layers
+//     for (int il = 0; il < num_hidden_layers; ++il) {
+//         const auto &layer = enc.layers[il];
+//
+//         // norm 1
+//         {
+//             cur = ggml_norm(ctx0, inpL, hparams.eps);
+//
+//             // cur = w * cur + b
+//             cur = ggml_mul(ctx0, cur, layer.norm1_w);
+//             cur = ggml_add_inplace(ctx0, cur, layer.norm1_b);
+//         }
+//
+//         const int64_t W = cur->ne[1];
+//         const int64_t H = cur->ne[2];
+//
+//         // self-attention
+//         {
+//             cur = ggml_mul_mat(ctx0, layer.qkv_w, cur);
+//             cur = ggml_add_inplace(ctx0, cur, layer.qkv_b);
+//
+//             // split qkv into separate tensors
+//             const int B = cur->ne[3];
+//
+//             cur = ggml_reshape_4d(ctx0, cur, hidden_size, 3, W * H, B);
+//             cur = ggml_cont(ctx0, ggml_permute(ctx0, cur, 0, 3, 1, 2));
+//
+//             struct ggml_tensor *Q;
+//             struct ggml_tensor *K;
+//             struct ggml_tensor *V;
+//
+//             Q = ggml_view_3d(ctx0, cur, hidden_size, W * H, B, cur->nb[1], cur->nb[2], 0 * cur->nb[3]);
+//             Q = ggml_reshape_4d(ctx0, Q, n_enc_head_dim, num_attention_heads, W * H, B);
+//             Q = ggml_cont(ctx0, ggml_permute(ctx0, Q, 0, 2, 1, 3));
+//             Q = ggml_reshape_3d(ctx0, Q, n_enc_head_dim, W * H, B * num_attention_heads);
+//
+//             K = ggml_view_3d(ctx0, cur, hidden_size, W * H, B, cur->nb[1], cur->nb[2], 1 * cur->nb[3]);
+//             K = ggml_reshape_4d(ctx0, K, n_enc_head_dim, num_attention_heads, W * H, B);
+//             K = ggml_cont(ctx0, ggml_permute(ctx0, K, 0, 2, 1, 3));
+//             K = ggml_reshape_3d(ctx0, K, n_enc_head_dim, W * H, B * num_attention_heads);
+//
+//             V = ggml_view_3d(ctx0, cur, hidden_size, W * H, B, cur->nb[1], cur->nb[2], 2 * cur->nb[3]);
+//             V = ggml_reshape_4d(ctx0, V, n_enc_head_dim, num_attention_heads, W * H, B);
+//             V = ggml_cont(ctx0, ggml_permute(ctx0, V, 1, 2, 0, 3)); // transposed
+//             V = ggml_reshape_3d(ctx0, V, W * H, n_enc_head_dim, B * num_attention_heads);
+//
+//             struct ggml_tensor *KQ = ggml_mul_mat(ctx0, K, Q);
+//
+//             // attention weights
+//             struct ggml_tensor *KQ_scaled =
+//                     ggml_scale_inplace(ctx0,
+//                                        KQ,
+//                                        1.0f / sqrtf(n_enc_head_dim));
+//
+//             struct ggml_tensor *KQ_soft_max = ggml_soft_max_inplace(ctx0, KQ_scaled);
+//
+//             struct ggml_tensor *KQV = ggml_mul_mat(ctx0, V, KQ_soft_max);
+//
+//             cur =
+//                     ggml_reshape_4d(ctx0,
+//                                     ggml_cont(ctx0,
+//                                               ggml_permute(ctx0,
+//                                                            ggml_reshape_4d(
+//                                                                ctx0, KQV, n_enc_head_dim, W * H, num_attention_heads,
+//                                                                B),
+//                                                            0, 2, 1, 3)),
+//                                     hidden_size, W, H, B);
+//
+//             cur = ggml_mul_mat(ctx0, layer.proj_w, cur);
+//             cur = ggml_add_inplace(ctx0, cur, layer.proj_b);
+//         }
+//
+//         // add skip connection
+//         cur = ggml_add_inplace(ctx0, cur, inpL);
+//
+//         struct ggml_tensor *inpFF = cur;
+//
+//         // feed-forward network
+//         {
+//             // norm 2
+//             {
+//                 cur = ggml_norm(ctx0, inpFF, hparams.eps);
+//
+//                 // cur = w * cur + b
+//                 cur = ggml_mul(ctx0, cur, layer.norm2_w);
+//                 cur = ggml_add_inplace(ctx0, cur, layer.norm2_b);
+//             }
+//
+//             // fully connected layer
+//             cur = ggml_mul_mat(ctx0, layer.mlp_lin1_w, cur);
+//             cur = ggml_add_inplace(ctx0, cur, layer.mlp_lin1_b);
+//
+//             // GELU activation
+//             cur = ggml_gelu(ctx0, cur);
+//
+//             // projection
+//             cur = ggml_mul_mat(ctx0, layer.mlp_lin2_w, cur);
+//             cur = ggml_add_inplace(ctx0, cur, layer.mlp_lin2_b);
+//         }
+//
+//         inpL = ggml_add(ctx0, cur, inpFF);
+//     }
+//
+//     cur = inpL;
+//
+//     //
+//     // pooling
+//     //
+//
+//     // get the output of cls token at index 0
+//     struct ggml_tensor *cls_token = ggml_view_1d(ctx0, cur, hidden_size, 0);
+//     cur = cls_token;
+//
+//     // layer normalization
+//     {
+//         cur = ggml_norm(ctx0, cur, hparams.eps);
+//
+//         // cur = w * cur + b
+//         cur = ggml_mul(ctx0, cur, classifier.norm_w);
+//         cur = ggml_add_inplace(ctx0, cur, classifier.norm_b);
+//     }
+//
+//     //
+//     // classification head
+//     //
+//
+//     // projection
+//     cur = ggml_mul_mat(ctx0, classifier.head_w, cur);
+//     cur = ggml_add_inplace(ctx0, cur, classifier.head_b);
+//
+//     // softmax
+//     ggml_tensor *probs = ggml_soft_max(ctx0, cur);
+//
+//     probs = ggml_cpy(ctx0, probs, state.prediction);
+//
+//     ggml_build_forward_expand(gf, probs);
+//     ggml_disconnect_node_from_graph(state.prediction);
+//
+//     ggml_free(ctx0);
+//
+//     ggml_gallocr_alloc_graph(state.allocr, gf); {
+//         struct ggml_tensor *inp = ggml_graph_get_tensor(gf, "inp");
+//         float *data = (float *) ggml_get_data(inp);
+//
+//         const int nx = img.nx;
+//         const int ny = img.ny;
+//         const int n = nx * ny;
+//
+//         GGML_ASSERT(nx == n_img_size && ny == n_img_size);
+//
+//         for (int k = 0; k < 3; k++) {
+//             for (int y = 0; y < ny; y++) {
+//                 for (int x = 0; x < nx; x++) {
+//                     data[k * n + y * nx + x] = img.data[3 * (y * nx + x) + k];
+//                 }
+//             }
+//         }
+//     }
+//
+//     return gf;
+// }
 
 void print_usage(int argc, char **argv, const dino_params &params) {
     fprintf(stderr, "usage: %s [options]\n", argv[0]);
@@ -958,55 +958,54 @@ bool dino_params_parse(int argc, char **argv, dino_params &params) {
     return true;
 }
 
-int dino_predict(const dino_model &model, dino_state &state, const image_f32 img1, const dino_params &params,
-                 std::vector<std::pair<float, int> > &predictions) {
-    // first build the graph and record memory requirements
-    state.buf_compute_img_enc.resize(ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead());
-    state.allocr = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
+// int dino_predict(const dino_model &model, dino_state &state, const image_f32 img1, const dino_params &params,
+//                  std::vector<std::pair<float, int> > &predictions) {
+//     // first build the graph and record memory requirements
+//     state.buf_compute_img_enc.resize(ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead());
+//     state.allocr = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
+//
+//     struct ggml_cgraph *gf = dino_encode_image(model, state, img1);
+//     if (!gf) {
+//         fprintf(stderr, "%s: failed to encode image\n", __func__);
+//         return 1;
+//     }
+//
+//     ggml_gallocr_alloc_graph(state.allocr, gf);
+//     ggml_graph_compute_helper(state.work_buffer, gf, params.n_threads);
+//
+//     // print_t_f32("after probs", state.prediction);
+//
+//     const float *probs_data = ggml_get_data_f32(state.prediction);
+//
+//     // clear previous predictions, used for topk
+//     predictions.clear();
+//     // std::vector<std::pair<float, int>> predictions;
+//
+//     // store probability and index
+//     for (int i = 0; i < model.hparams.num_classes; ++i) {
+//         predictions.push_back(std::make_pair(probs_data[i], i));
+//     }
+//
+//     // sort in descending order
+//     std::sort(predictions.begin(), predictions.end(),
+//               [](const std::pair<float, int> &a, const std::pair<float, int> &b) {
+//                   return a.first > b.first;
+//               });
+//
+//     fprintf(stderr, "\n");
+//
+//     // top k predictions
+//     for (int i = 0; i < params.topk && i < predictions.size(); ++i) {
+//         printf(" > %s : %.2f\n",
+//                model.hparams.id2label.at(predictions[i].second).c_str(),
+//                predictions[i].first);
+//     }
+//
+//     // free memory
+//     ggml_gallocr_free(state.allocr);
+//     state.allocr = nullptr;
+//     state.work_buffer.clear();
+//
+//     return 0;
+// }
 
-    struct ggml_cgraph *gf = dino_encode_image(model, state, img1);
-    if (!gf) {
-        fprintf(stderr, "%s: failed to encode image\n", __func__);
-        return 1;
-    }
-
-    ggml_gallocr_alloc_graph(state.allocr, gf);
-    ggml_graph_compute_helper(state.work_buffer, gf, params.n_threads);
-
-    // print_t_f32("after probs", state.prediction);
-
-    const float *probs_data = ggml_get_data_f32(state.prediction);
-
-    // clear previous predictions, used for topk
-    predictions.clear();
-    // std::vector<std::pair<float, int>> predictions;
-
-    // store probability and index
-    for (int i = 0; i < model.hparams.num_classes; ++i) {
-        predictions.push_back(std::make_pair(probs_data[i], i));
-    }
-
-    // sort in descending order
-    std::sort(predictions.begin(), predictions.end(),
-              [](const std::pair<float, int> &a, const std::pair<float, int> &b) {
-                  return a.first > b.first;
-              });
-
-    fprintf(stderr, "\n");
-
-    // top k predictions
-    for (int i = 0; i < params.topk && i < predictions.size(); ++i) {
-        printf(" > %s : %.2f\n",
-               model.hparams.id2label.at(predictions[i].second).c_str(),
-               predictions[i].first);
-    }
-
-    // free memory
-    ggml_gallocr_free(state.allocr);
-    state.allocr = nullptr;
-    state.work_buffer.clear();
-
-    return 0;
-}
-
-*/

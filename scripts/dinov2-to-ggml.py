@@ -93,7 +93,7 @@ def process_and_write_variable(file: BinaryIO, name: str, tensor: torch.Tensor, 
     if name_without_prefix == "embeddings.patch_embeddings.projection.bias":
         data = data.reshape(1, data.shape[0], 1, 1)
 
-    str_name = name.encode("utf-8")
+    str_name = name_without_prefix.encode("utf-8")
     file.write(struct.pack("iii", len(data.shape), len(str_name), ftype))
     for dim_size in reversed(data.shape):
         file.write(struct.pack("i", dim_size))
