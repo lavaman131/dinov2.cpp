@@ -406,19 +406,13 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
-
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
-
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size); //scale1.lambda1
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
@@ -432,6 +426,8 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
         }
 
+        // 8 comes from the 4 input and 4 classifier tensors
+        // 18 comes from the 18 tensors in the encoder blocks
         ctx_size += (8 + 18 * num_hidden_layers) * ggml_tensor_overhead();
 
         // classifier
