@@ -392,11 +392,13 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
         const int32_t n_img_embd = hparams.n_img_embd();
         const int32_t n_patch_size = hparams.n_patch_size();
+        std::cout << "hidden_size: " << hidden_size << std::endl;
 
         // image encoder
         {
             ctx_size += ggml_row_size(wtype, hidden_size);
             ctx_size += ggml_row_size(wtype, hidden_size * (n_img_embd * n_img_embd + 1));
+
 
             ctx_size += ggml_row_size(wtype, hidden_size * 3 * n_patch_size * n_patch_size);
             ctx_size += ggml_row_size(wtype, hidden_size);
@@ -407,12 +409,21 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+
+
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size); //scale1.lambda1
+
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
@@ -420,7 +431,12 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
             ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+
+
+
         }
 
         // dig into this more later!
@@ -428,8 +444,10 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
         // classifier
         {
-            ctx_size += ggml_row_size(wtype, 2 * hidden_size);
-            ctx_size += ggml_row_size(wtype, num_classes * hidden_size);
+            ctx_size += ggml_row_size(wtype, hidden_size);
+            ctx_size += ggml_row_size(wtype, hidden_size);
+
+            ctx_size += ggml_row_size(wtype, num_classes * hidden_size * 2);
             ctx_size += ggml_row_size(wtype, num_classes);
         }
 
