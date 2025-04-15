@@ -392,11 +392,12 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
         const int32_t n_img_embd = hparams.n_img_embd();
         const int32_t n_patch_size = hparams.n_patch_size();
-        std::cout << "hidden_size: " << hidden_size << std::endl;
 
         // image encoder
         {
             ctx_size += ggml_row_size(wtype, hidden_size);
+            //ctx_size += ggml_row_size(wtype, hidden_size);  // mask token layer? unsure if this is needed
+
             ctx_size += ggml_row_size(wtype, hidden_size * (n_img_embd * n_img_embd + 1));
 
 
@@ -418,7 +419,6 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
-
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
@@ -434,13 +434,11 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
-
-
-
         }
 
         // dig into this more later!
-        ctx_size += (8 + 14 * num_hidden_layers) * ggml_tensor_overhead();
+        // changed to 18
+        ctx_size += (8 + 18 * num_hidden_layers) * ggml_tensor_overhead();
 
         // classifier
         {
