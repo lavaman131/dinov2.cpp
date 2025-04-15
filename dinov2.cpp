@@ -689,6 +689,7 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 // DINOv2 Encoder
 //
 
+/*
 struct ggml_cgraph *dino_encode_image(
     const dino_model &model,
     dino_state &state,
@@ -706,13 +707,14 @@ struct ggml_cgraph *dino_encode_image(
 
     const int32_t n_img_embd = hparams.n_img_embd();
     const int32_t n_patch_size = hparams.n_patch_size();
+*/
+   // struct ggml_init_params ggml_params = {
+    //    /*.mem_size   =*/state.buf_compute_img_enc.size(),
+    //    /*.mem_buffer =*/state.buf_compute_img_enc.data(),
+    //    /*.no_alloc   =*/true, // skip allocating as we use ggml_alloc to allocate exact memory requirements
+   //}; 
 
-    struct ggml_init_params ggml_params = {
-        /*.mem_size   =*/state.buf_compute_img_enc.size(),
-        /*.mem_buffer =*/state.buf_compute_img_enc.data(),
-        /*.no_alloc   =*/true, // skip allocating as we use ggml_alloc to allocate exact memory requirements
-    };
-
+   /*
     struct ggml_context *ctx0 = ggml_init(ggml_params);
     struct ggml_cgraph *gf = ggml_new_graph(ctx0);
 
@@ -1006,3 +1008,5 @@ int dino_predict(const dino_model &model, dino_state &state, const image_f32 img
 
     return 0;
 }
+
+*/

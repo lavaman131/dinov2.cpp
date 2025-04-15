@@ -1,6 +1,6 @@
 #define CRT_SECURE_NO_DEPRECATE // disables "unsafe" warnings on Windows
 
-#include "vit.h"
+#include "dinov2.h"
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml/examples/stb_image.h" // stb image load
@@ -27,17 +27,17 @@ int main(int argc, char **argv) {
     ggml_time_init();
     const int64_t t_main_start_us = ggml_time_us();
 
-    vit_params params;
+    dino_params params;
 
     image_u8 img0;
     image_f32 img1;
 
-    vit_model model;
-    vit_state state;
+    dino_model model;
+    dino_state state;
 
     int64_t t_load_us = 0;
 
-    if (vit_params_parse(argc, argv, params) == false) {
+    if (dino_params_parse(argc, argv, params) == false) {
         return 1;
     }
 
@@ -52,13 +52,15 @@ int main(int argc, char **argv) {
     {
         const int64_t t_start_us = ggml_time_us();
 
-        if (!vit_model_load(params.model, model)) {
+        if (!dino_model_load(params.model, model)) {
             fprintf(stderr, "%s: failed to load model from '%s'\n", __func__, params.model.c_str());
             return 1;
         }
 
         t_load_us = ggml_time_us() - t_start_us;
     }
+
+    /*
 
     // load the image
     if (!load_image_from_file(params.fname_inp, img0)) {
@@ -68,28 +70,28 @@ int main(int argc, char **argv) {
     fprintf(stderr, "%s: loaded image '%s' (%d x %d)\n", __func__, params.fname_inp.c_str(), img0.nx, img0.ny);
 
     // preprocess the image to f32
-    if (vit_image_preprocess(img0, img1, model.hparams)) {
+    if (dino_image_preprocess(img0, img1, model.hparams)) {
         fprintf(stderr, "processed, out dims : (%d x %d)\n", img1.nx, img1.ny);
     }
 
     // prepare for graph computation, memory allocation and results processing
     {
-        static size_t buf_size = 3u * 1024 * 1024;
+        static size_t buf_size = 3u * 1024 * 1024; */
 
-        struct ggml_init_params ggml_params = {
-            /*.mem_size   =*/buf_size,
-            /*.mem_buffer =*/nullptr,
-            /*.no_alloc   =*/false,
-        };
+        //struct ggml_init_params ggml_params = {
+        //    /*.mem_size   =*/buf_size,
+        //    /*.mem_buffer =*/nullptr,
+        //    /*.no_alloc   =*/false,
+        //};
 
-        state.ctx = ggml_init(ggml_params);
+        /* state.ctx = ggml_init(ggml_params);
         state.prediction = ggml_new_tensor_4d(state.ctx, GGML_TYPE_F32, model.hparams.num_classes, 1, 1, 1);
 
         // printf("%s: Initialized context = %ld bytes\n", __func__, buf_size);
     } {
         std::vector<std::pair<float, int> > predictions;
         // run prediction on img1
-        vit_predict(model, state, img1, params, predictions);
+        dino_predict(model, state, img1, params, predictions);
     }
 
     // report timing
@@ -104,5 +106,5 @@ int main(int argc, char **argv) {
 
     ggml_free(model.ctx);
 
-    return 0;
+    return 0; */
 }
