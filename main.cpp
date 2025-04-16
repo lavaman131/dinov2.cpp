@@ -61,36 +61,36 @@ int main(int argc, char **argv) {
     }
 
     // load the image
-    // if (!load_image_from_file(params.fname_inp, img0)) {
-    //     fprintf(stderr, "%s: failed to load image from '%s'\n", __func__, params.fname_inp.c_str());
-    //     return 1;
-    // }
-    // fprintf(stderr, "%s: loaded image '%s' (%d x %d)\n", __func__, params.fname_inp.c_str(), img0.nx, img0.ny);
+    if (!load_image_from_file(params.fname_inp, img0)) {
+        fprintf(stderr, "%s: failed to load image from '%s'\n", __func__, params.fname_inp.c_str());
+        return 1;
+    }
+    fprintf(stderr, "%s: loaded image '%s' (%d x %d)\n", __func__, params.fname_inp.c_str(), img0.nx, img0.ny);
 
     // preprocess the image to f32
-    // if (dino_image_preprocess(img0, img1, model.hparams)) {
-    //     fprintf(stderr, "processed, out dims : (%d x %d)\n", img1.nx, img1.ny);
-    // }
+    if (dino_image_preprocess(img0, img1, model.hparams)) {
+        fprintf(stderr, "processed, out dims : (%d x %d)\n", img1.nx, img1.ny);
+    }
 
     // prepare for graph computation, memory allocation and results processing
-    // {
-    //     static size_t buf_size = 3u * 1024 * 1024;
-    //
-    //     struct ggml_init_params ggml_params = {
-    //         /*.mem_size   =*/buf_size,
-    //         /*.mem_buffer =*/nullptr,
-    //         /*.no_alloc   =*/false,
-    //     };
-    //
-    //     state.ctx = ggml_init(ggml_params);
-    //     state.prediction = ggml_new_tensor_4d(state.ctx, GGML_TYPE_F32, model.hparams.num_classes, 1, 1, 1);
-    //
-    //     // printf("%s: Initialized context = %ld bytes\n", __func__, buf_size);
-    // // } {
-    //     std::vector<std::pair<float, int> > predictions;
-    //     // run prediction on img1
-    //     dino_predict(model, state, img1, params, predictions);
-    // }
+    {
+        static size_t buf_size = 3u * 1024 * 1024;
+
+        struct ggml_init_params ggml_params = {
+            /*.mem_size   =*/buf_size,
+            /*.mem_buffer =*/nullptr,
+            /*.no_alloc   =*/false,
+        };
+
+        state.ctx = ggml_init(ggml_params);
+        state.prediction = ggml_new_tensor_4d(state.ctx, GGML_TYPE_F32, model.hparams.num_classes, 1, 1, 1);
+
+        // printf("%s: Initialized context = %ld bytes\n", __func__, buf_size);
+        // } {
+        std::vector<std::pair<float, int> > predictions;
+        // run prediction on img1
+        dino_predict(model, state, img1, params, predictions);
+    }
 
     // report timing
     {

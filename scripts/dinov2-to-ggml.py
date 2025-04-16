@@ -45,6 +45,8 @@ def main() -> None:
         "img_size": config.image_size,
     }
 
+    print(hparams)
+
     ftype = 1  # float16
 
     # Write to file
