@@ -121,7 +121,7 @@ def process_and_write_variable(file: BinaryIO, name: str, tensor: torch.Tensor, 
     file.write(str_name)
     data.tofile(file)
 
-    print(name_without_prefix, data.shape, ftype)
+    print(name_without_prefix, data.shape, ['f32', 'f16'][ftype_cur])
 
 
 if __name__ == "__main__":

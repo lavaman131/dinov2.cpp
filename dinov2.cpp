@@ -599,7 +599,7 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
                 std::string name(length, 0);
                 fin.read(&name[0], length);
 
-                std::cout << "TEST" << std::endl;
+                // std::cout << "TEST" << std::endl;
 
 
                 if (model.tensors.find(name.data()) == model.tensors.end()) {
@@ -611,9 +611,9 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
                 auto tensor = model.tensors[name.data()];
                 // printf("ne0 = %jd, ne1 = %jd, ne2 = %jd, ne3 = %jd\n", ne[0], ne[1], ne[2], ne[3]);
 
-                std::cout << "tensor name: " << name.data() << " with shape " << ggml_nelements(tensor) << " " <<
-                        nelements <<
-                        std::endl;
+                // std::cout << "tensor name: " << name.data() << " with shape " << ggml_nelements(tensor) << " " <<
+                //         nelements <<
+                //         std::endl;
 
                 if (ggml_nelements(tensor) != nelements) {
                     fprintf(stderr, "%s: tensor '%s' has wrong size in model file: got %d, expected %d\n",
@@ -621,10 +621,10 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
                     return false;
                 }
 
-                std::cout << tensor->ne[0] << " " << tensor->ne[1] << " " << tensor->ne[2] << " " << tensor->ne[3] <<
-                        std::endl;
-
-                std::cout << ne[0] << " " << ne[1] << " " << ne[2] << " " << ne[3] << std::endl;
+                // std::cout << tensor->ne[0] << " " << tensor->ne[1] << " " << tensor->ne[2] << " " << tensor->ne[3] <<
+                //         std::endl;
+                //
+                // std::cout << ne[0] << " " << ne[1] << " " << ne[2] << " " << ne[3] << std::endl;
 
                 if (tensor->ne[0] != ne[0] || tensor->ne[1] != ne[1] || tensor->ne[2] != ne[2] || tensor->ne[3] != ne[
                         3]) {
@@ -637,7 +637,7 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
                     return false;
                 }
 
-                std::cout << "DEBUG" << std::endl;
+                // std::cout << "DEBUG" << std::endl;
 
                 size_t bpe = 0;
 
@@ -765,9 +765,9 @@ struct ggml_cgraph *dino_encode_image(
                     ggml_permute(ctx0, cur, 1, 2, 0, 3)); // (37, 768, 37, 1)
 
     // convert to F16
-    cur = ggml_cpy(ctx0,
-                   ggml_permute(ctx0, cur, 1, 2, 0, 3),
-                   ggml_new_tensor_3d(ctx0, GGML_TYPE_F16, hidden_size, n_img_embd, n_img_embd)); // (768, 37, 37, 1)
+    // cur = ggml_cpy(ctx0,
+    //                ggml_permute(ctx0, cur, 1, 2, 0, 3),
+    //                ggml_new_tensor_3d(ctx0, GGML_TYPE_F16, hidden_size, n_img_embd, n_img_embd)); // (768, 37, 37, 1)
 
     //
     // add positional embedding
@@ -915,8 +915,18 @@ struct ggml_cgraph *dino_encode_image(
                                                     cur->nb[3],
                                                     cur->nb[1]);
 
-    patch_tokens = ggml_mean(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3));
-    patch_tokens = ggml_cont(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3));
+
+    patch_tokens = ggml_permute(ctx0, ggml_mean(ctx0, ggml_cont(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3))), 1,
+                                0, 2,
+                                3);
+    // patch_tokens = ggml_cont(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3));
+
+    std::cout << "cls tokens: " << cls_token->ne[0] << ", " << cls_token->ne[1] << ", " << cls_token->ne[2] << ", " <<
+            cls_token->ne[3]
+            << std::endl;
+    std::cout << "patch tokens shape " << patch_tokens->ne[0] << ", " << patch_tokens->ne[1] << ", " << patch_tokens->ne
+            [2] << ", "
+            << patch_tokens->ne[3] << std::endl;
 
     cur = ggml_concat(ctx0, cls_token, patch_tokens, 0);
 
@@ -937,7 +947,7 @@ struct ggml_cgraph *dino_encode_image(
     //
     probs = ggml_cpy(ctx0, probs, state.prediction);
 
-    // ggml_build_forward_expand(gf, probs);
+    ggml_build_forward_expand(gf, probs);
     ggml_disconnect_node_from_graph(state.prediction);
 
     ggml_free(ctx0);
