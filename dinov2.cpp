@@ -375,7 +375,6 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
             return false;
         }
     }
-    wtype = GGML_TYPE_F32;
 
     auto &ctx = model.ctx;
 
@@ -395,35 +394,35 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
         // image encoder
         {
-            ctx_size += ggml_row_size(wtype, hidden_size);
-            ctx_size += ggml_row_size(wtype, hidden_size * (n_img_embd * n_img_embd + 1));
-            ctx_size += ggml_row_size(wtype, hidden_size * 3 * n_patch_size * n_patch_size);
-            ctx_size += ggml_row_size(wtype, hidden_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size * (n_img_embd * n_img_embd + 1));
+            ctx_size += ggml_row_size(GGML_TYPE_F16, hidden_size * 3 * n_patch_size * n_patch_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);
         }
 
         // image encoder layers
         {
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, 3 * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 3 * hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
 
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
 
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
-
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
 
             ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, 4 * hidden_size);
 
-            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, 4 * hidden_size * hidden_size);
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
+
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);
         }
 
         // 8 comes from the 4 input and 4 classifier tensors
@@ -432,11 +431,11 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
         // classifier
         {
-            ctx_size += ggml_row_size(wtype, hidden_size);
-            ctx_size += ggml_row_size(wtype, hidden_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);
 
             ctx_size += ggml_row_size(wtype, num_classes * hidden_size * 2);
-            ctx_size += ggml_row_size(wtype, num_classes);
+            ctx_size += ggml_row_size(GGML_TYPE_F32, num_classes);
         }
 
         fprintf(stderr, "%s: ggml ctx size = %6.2f MB\n", __func__, ctx_size / (1024.0 * 1024.0));
@@ -476,11 +475,13 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
         // image encoder
         {
             auto &enc = model.enc_img;
-            enc.pos_embed = ggml_new_tensor_3d(ctx, wtype, hidden_size, n_img_embd * n_img_embd + 1, 1);
-            enc.cls_token = ggml_new_tensor_3d(ctx, wtype, hidden_size, 1, 1);
+            enc.pos_embed = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, hidden_size, n_img_embd * n_img_embd + 1, 1);
+            enc.cls_token = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, hidden_size, 1, 1);
+            // std::cout << "cls token shape " << enc.cls_token->ne[0] << " " << enc.cls_token->ne[1] << " " << enc.
+            //         cls_token->ne[2] << std::endl;
 
-            enc.patch_embed_w = ggml_new_tensor_4d(ctx, wtype, n_patch_size, n_patch_size, 3, hidden_size);
-            enc.patch_embed_b = ggml_new_tensor_3d(ctx, wtype, 1, 1, hidden_size);
+            enc.patch_embed_w = ggml_new_tensor_4d(ctx, GGML_TYPE_F16, n_patch_size, n_patch_size, 3, hidden_size);
+            enc.patch_embed_b = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, 1, 1, hidden_size);
 
             model.tensors["embeddings.position_embeddings"] = enc.pos_embed;
             model.tensors["embeddings.cls_token"] = enc.cls_token;
@@ -491,33 +492,33 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
             for (int i = 0; i < num_hidden_layers; ++i) {
                 auto &layer = enc.layers[i];
 
-                layer.norm1_w = ggml_new_tensor_1d(ctx, wtype, hidden_size);
-                layer.norm1_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.norm1_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
+                layer.norm1_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
                 layer.q_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
-                layer.q_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.q_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
                 layer.k_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
-                layer.k_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.k_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
                 layer.v_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
-                layer.v_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.v_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
                 layer.dense_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
-                layer.dense_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.dense_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
-                layer.layer_scale1_lam = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.layer_scale1_lam = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
-                layer.norm2_w = ggml_new_tensor_1d(ctx, wtype, hidden_size);
-                layer.norm2_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.norm2_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
+                layer.norm2_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
                 layer.fc1_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, 4 * hidden_size);
-                layer.fc1_b = ggml_new_tensor_1d(ctx, wtype, 4 * hidden_size);
+                layer.fc1_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 4 * hidden_size);
 
                 layer.fc2_w = ggml_new_tensor_2d(ctx, wtype, 4 * hidden_size, hidden_size);
-                layer.fc2_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.fc2_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
-                layer.layer_scale2_lam = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+                layer.layer_scale2_lam = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
                 model.tensors["encoder.layer." + std::to_string(i) + ".norm1.weight"] = layer.norm1_w;
                 model.tensors["encoder.layer." + std::to_string(i) + ".norm1.bias"] = layer.norm1_b;
@@ -553,11 +554,11 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
         {
             auto &classifier = model.classifier;
 
-            classifier.norm_w = ggml_new_tensor_1d(ctx, wtype, hidden_size);
-            classifier.norm_b = ggml_new_tensor_1d(ctx, wtype, hidden_size);
+            classifier.norm_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
+            classifier.norm_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
             classifier.head_w = ggml_new_tensor_2d(ctx, wtype, hidden_size * 2, num_classes);
-            classifier.head_b = ggml_new_tensor_1d(ctx, wtype, num_classes);
+            classifier.head_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, num_classes);
 
             model.tensors["layernorm.weight"] = classifier.norm_w;
             model.tensors["layernorm.bias"] = classifier.norm_b;
@@ -598,19 +599,32 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
                 std::string name(length, 0);
                 fin.read(&name[0], length);
 
+                std::cout << "TEST" << std::endl;
+
+
                 if (model.tensors.find(name.data()) == model.tensors.end()) {
                     fprintf(stderr, "%s: unknown tensor '%s' in model file\n", __func__, name.data());
                     return false;
                 }
 
+
                 auto tensor = model.tensors[name.data()];
                 // printf("ne0 = %jd, ne1 = %jd, ne2 = %jd, ne3 = %jd\n", ne[0], ne[1], ne[2], ne[3]);
+
+                std::cout << "tensor name: " << name.data() << " with shape " << ggml_nelements(tensor) << " " <<
+                        nelements <<
+                        std::endl;
 
                 if (ggml_nelements(tensor) != nelements) {
                     fprintf(stderr, "%s: tensor '%s' has wrong size in model file: got %d, expected %d\n",
                             __func__, name.data(), (int) nelements, (int) ggml_nelements(tensor));
                     return false;
                 }
+
+                std::cout << tensor->ne[0] << " " << tensor->ne[1] << " " << tensor->ne[2] << " " << tensor->ne[3] <<
+                        std::endl;
+
+                std::cout << ne[0] << " " << ne[1] << " " << ne[2] << " " << ne[3] << std::endl;
 
                 if (tensor->ne[0] != ne[0] || tensor->ne[1] != ne[1] || tensor->ne[2] != ne[2] || tensor->ne[3] != ne[
                         3]) {
@@ -622,6 +636,8 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
                         (int) tensor->ne[0], (int) tensor->ne[1], (int) tensor->ne[2], (int) tensor->ne[3]);
                     return false;
                 }
+
+                std::cout << "DEBUG" << std::endl;
 
                 size_t bpe = 0;
 

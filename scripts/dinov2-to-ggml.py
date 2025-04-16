@@ -19,6 +19,13 @@ def get_args() -> argparse.Namespace:
         default="facebook/dinov2-small-imagenet1k-1-layer",
         help="HuggingFace model name",
     )
+    parser.add_argument(
+        "--ftype",
+        type=int,
+        choices=[0, 1],
+        default=1,
+        help="float type: 0 for float32, 1 for float16",
+    )
     args = parser.parse_args()
     return args
 
@@ -26,7 +33,7 @@ def get_args() -> argparse.Namespace:
 def main() -> None:
     args = get_args()
     # Output file name
-    fname_out = f"./ggml-model-f16.gguf"
+    fname_out = f"./ggml-model-{['f32', 'f16'][args.ftype]}.gguf"
 
     # Load the pretrained model
     # model = AutoModel.from_pretrained(args.model_name)
@@ -47,14 +54,12 @@ def main() -> None:
 
     print(hparams)
 
-    ftype = 1  # float16
-
     # Write to file
     with open(fname_out, "wb") as fout:
         fout.write(struct.pack("i", GGML_MAGIC))  # Magic: ggml in hex
         for param in hparams.values():
             fout.write(struct.pack("i", param))
-        fout.write(struct.pack("i", ftype))
+        fout.write(struct.pack("i", args.ftype))
 
         # Write id2label dictionary to the file
         write_id2label(fout, id2label)
@@ -71,7 +76,7 @@ def main() -> None:
                 " and type: ",
                 v.dtype,
             )
-            process_and_write_variable(fout, k, v, ftype)
+            process_and_write_variable(fout, k, v, args.ftype)
 
         print("Done. Output file: " + fname_out)
 
@@ -97,17 +102,26 @@ def process_and_write_variable(file: BinaryIO, name: str, tensor: torch.Tensor, 
         # Skip the mask token
         return
 
-    data = data.astype(np.float32) if ftype == 0 else data.astype(np.float16)
+    ftype_cur = (
+        1
+        if ftype == 1 and tensor.ndim != 1 and name_without_prefix not in {"embeddings.position_embeddings",
+                                                                           "embeddings.cls_token",
+                                                                           "embeddings.register_tokens"}
+        else 0
+    )
+    data = data.astype(np.float32) if ftype_cur == 0 else data.astype(np.float16)
 
     if name_without_prefix == "embeddings.patch_embeddings.projection.bias":
         data = data.reshape(1, data.shape[0], 1, 1)
 
     str_name = name_without_prefix.encode("utf-8")
-    file.write(struct.pack("iii", len(data.shape), len(str_name), ftype))
+    file.write(struct.pack("iii", len(data.shape), len(str_name), ftype_cur))
     for dim_size in reversed(data.shape):
         file.write(struct.pack("i", dim_size))
     file.write(str_name)
     data.tofile(file)
+
+    print(name_without_prefix, data.shape, ftype)
 
 
 if __name__ == "__main__":
