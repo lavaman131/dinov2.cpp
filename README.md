@@ -134,7 +134,7 @@ python ./scripts/vit-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_f
 ```bash
 # on MacOS/Linux
 mkdir build && cd build
-cmake .. && make -j 4
+cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
 ./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 

@@ -84,6 +84,8 @@ int main(int argc, char **argv) {
 
         state.ctx = ggml_init(ggml_params);
         state.prediction = ggml_new_tensor_4d(state.ctx, GGML_TYPE_F32, model.hparams.num_classes, 1, 1, 1);
+        state.patch_tokens = ggml_new_tensor_4d(state.ctx, GGML_TYPE_F32, model.hparams.hidden_size,
+                                                model.hparams.n_img_embd() * model.hparams.n_img_embd(), 1, 1);
 
         // printf("%s: Initialized context = %ld bytes\n", __func__, buf_size);
         // } {

@@ -76,6 +76,7 @@ struct dino_image_encoder {
 
 struct dino_state {
     struct ggml_tensor *prediction;
+    struct ggml_tensor *patch_tokens;
     struct ggml_context *ctx;
     std::vector<uint8_t> work_buffer;
     std::vector<uint8_t> buf_alloc_img_enc;

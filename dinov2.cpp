@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <iostream>
 
+#include "ggml/src/ggml-impl.h"
+
 #if defined(_MSC_VER)
 #pragma warning(disable : 4244 4267) // possible loss of data
 #endif
@@ -916,19 +918,24 @@ struct ggml_cgraph *dino_encode_image(
                                                     cur->nb[1]);
 
 
-    patch_tokens = ggml_permute(ctx0, ggml_mean(ctx0, ggml_cont(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3))), 1,
-                                0, 2,
-                                3);
     // patch_tokens = ggml_cont(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3));
 
-    std::cout << "cls tokens: " << cls_token->ne[0] << ", " << cls_token->ne[1] << ", " << cls_token->ne[2] << ", " <<
-            cls_token->ne[3]
-            << std::endl;
-    std::cout << "patch tokens shape " << patch_tokens->ne[0] << ", " << patch_tokens->ne[1] << ", " << patch_tokens->ne
-            [2] << ", "
-            << patch_tokens->ne[3] << std::endl;
+    // std::cout << "cls tokens: " << cls_token->ne[0] << ", " << cls_token->ne[1] << ", " << cls_token->ne[2] << ", " <<
+    //         cls_token->ne[3]
+    //         << std::endl;
+    // std::cout << "patch tokens shape " << patch_tokens->ne[0] << ", " << patch_tokens->ne[1] << ", " << patch_tokens->ne
+    //         [2] << ", "
+    //         << patch_tokens->ne[3] << std::endl;
 
-    cur = ggml_concat(ctx0, cls_token, patch_tokens, 0);
+    cur = ggml_concat(ctx0, cls_token, ggml_permute(
+                          ctx0, ggml_mean(ctx0, ggml_cont(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3))), 1,
+                          0, 2,
+                          3), 0);
+
+    patch_tokens = ggml_cpy(ctx0, patch_tokens, state.patch_tokens);
+
+    ggml_build_forward_expand(gf, patch_tokens);
+    ggml_disconnect_node_from_graph(state.patch_tokens);
 
     // std::cout << "cls_token shape " << cls_token->ne[0] << ", " << cls_token->ne[1] << ", " << cls_token->ne[2] << ", "
     //         << cls_token->ne[3] << std::endl;
@@ -1030,8 +1037,12 @@ int dino_predict(const dino_model &model, dino_state &state, const image_f32 img
         return 1;
     }
 
-    ggml_gallocr_alloc_graph(state.allocr, gf);
     ggml_graph_compute_helper(state.work_buffer, gf, params.n_threads);
+
+    // free memory
+    ggml_gallocr_free(state.allocr);
+    state.allocr = nullptr;
+    state.work_buffer.clear();
 
     // print_t_f32("after probs", state.prediction);
 
@@ -1060,11 +1071,6 @@ int dino_predict(const dino_model &model, dino_state &state, const image_f32 img
                model.hparams.id2label.at(predictions[i].second).c_str(),
                predictions[i].first);
     }
-
-    // free memory
-    ggml_gallocr_free(state.allocr);
-    state.allocr = nullptr;
-    state.work_buffer.clear();
 
     return 0;
 }
