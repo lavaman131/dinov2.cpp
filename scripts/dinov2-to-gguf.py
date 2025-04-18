@@ -122,8 +122,8 @@ def save_tensor(
     )
     data = data.astype(np.float32) if ftype == 0 else data.astype(np.float16)
 
-    # if name == "embeddings.patch_embeddings.projection.bias":
-    #     data = data.reshape(1, data.shape[0], 1, 1)
+    if name == "embeddings.patch_embeddings.projection.bias":
+        data = data.reshape(1, data.shape[0], 1, 1)
 
     writer.add_tensor(name, data)
 

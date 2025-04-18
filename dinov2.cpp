@@ -780,7 +780,27 @@ int dino_predict(const dino_model &model, const image_f32 &img1,
     ggml_gallocr_alloc_graph(allocr, gf);
 
     struct ggml_tensor *input = ggml_graph_get_tensor(gf, "input");
-    ggml_backend_tensor_set(input, img1.data.data(), 0, ggml_nbytes(input));
+    // ggml_backend_tensor_set(input, img1.data.data(), 0, ggml_nbytes(input));
+
+    {
+        float *data = (float *) ggml_get_data(input);
+
+        const int nx = img1.nx;
+        const int ny = img1.ny;
+        const int n = nx * ny;
+
+        const int32_t n_img_size = model.hparams.img_size;
+
+        GGML_ASSERT(nx == n_img_size && ny == n_img_size);
+
+        for (int k = 0; k < 3; k++) {
+            for (int y = 0; y < ny; y++) {
+                for (int x = 0; x < nx; x++) {
+                    data[k * n + y * nx + x] = img1.data[3 * (y * nx + x) + k];
+                }
+            }
+        }
+    }
 
     if (ggml_backend_graph_compute(model.backend, gf) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "%s: ggml_backend_graph_compute() failed\n", __func__);
