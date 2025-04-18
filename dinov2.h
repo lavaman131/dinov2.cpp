@@ -73,8 +73,8 @@ struct dino_params {
 };
 
 struct dino_output {
-    std::vector<uint32> preds;
-    std::vector<float> patch_tokens;
+    std::optional<std::vector<uint32> > preds;
+    std::optional<std::vector<float> > patch_tokens;
 };
 
 void print_t_f32(const char *title, const struct ggml_tensor *t, int n);
