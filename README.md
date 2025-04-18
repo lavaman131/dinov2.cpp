@@ -134,14 +134,13 @@ python ./scripts/vit-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_f
 # on MacOS/Linux
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
-./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/dinov2 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 
 # MacOS with Apple silicon
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release \
-  -DGGML_METAL=ON \
-  -DGGML_METAL_EMBED_LIBRARY=ON .. && make -j 4
-./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+  -DGGML_METAL=ON .. && make -j 4
+./bin/dinov2 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 
 ```bash
@@ -149,7 +148,7 @@ cmake -DCMAKE_BUILD_TYPE=Release \
 mkdir build ; cd build
 cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
 ninja
-./bin/dinov2.exe -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/dinov2.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 
 The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of

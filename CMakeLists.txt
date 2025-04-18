@@ -21,10 +21,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 # Additional flags for C++ (the ffast-math is to be used with caution!)
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
-# Force ggml Metal backend on Apple or Intel
-set(GGML_METAL ON CACHE BOOL "Enable Metal GPU support" FORCE)
-set(GGML_METAL_EMBED_LIBRARY ON CACHE BOOL "Embed Metal shader library" FORCE)
-
 # deps
 add_subdirectory(ggml)
 
