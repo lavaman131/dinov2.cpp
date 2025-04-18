@@ -382,26 +382,16 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
     return true;
 }
 
-//
 // DINOv2 Encoder
-//
 
-
-struct ggml_cgraph *build_graph(
-    struct ggml_context *ctx_cgraph,
-    const dino_model &model) {
-    const auto &hparams = model.hparams;
-
+void *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                       const dino_model &model, const dino_hparams &hparams) {
     const int32_t hidden_size = hparams.hidden_size;
     const int32_t num_hidden_layers = hparams.num_hidden_layers;
     const int32_t num_attention_heads = hparams.num_attention_heads;
     const int32_t n_img_size = hparams.img_size;
     const int32_t n_enc_head_dim = hparams.n_enc_head_dim();
-
     const int32_t n_img_embd = hparams.n_img_embd();
-
-    struct ggml_cgraph *gf = ggml_new_graph(ctx_cgraph);
-
     // (W, H, C, B)
     // (518, 518, 3, 1)
     struct ggml_tensor *input = ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F32, n_img_size, n_img_size, 3, 1);
@@ -593,12 +583,13 @@ struct ggml_cgraph *build_graph(
         cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("layernorm.bias"));
     }
 
-    //
-    // classification head
-
-
     // get the output of cls token at index 0
     struct ggml_tensor *cls_token = ggml_view_1d(ctx_cgraph, cur, hidden_size, 0);
+
+    ggml_set_output(cls_token);
+    ggml_set_name(cls_token, "cls_token");
+    ggml_build_forward_expand(graph, cls_token);
+
     struct ggml_tensor *patch_tokens = ggml_view_4d(ctx_cgraph, cur, cur->ne[0], cur->ne[1] - 1, cur->ne[2], cur->ne[3],
                                                     cur->nb[1],
                                                     cur->nb[2],
@@ -607,6 +598,16 @@ struct ggml_cgraph *build_graph(
 
     ggml_set_output(patch_tokens);
     ggml_set_name(patch_tokens, "patch_tokens");
+    ggml_build_forward_expand(graph, patch_tokens);
+}
+
+void *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                   const dino_model &model, const dino_hparams &hparams) {
+    const int32_t n_img_embd = hparams.n_img_embd();
+
+    struct ggml_tensor *cls_token = ggml_graph_get_tensor(graph, "cls_token");
+    struct ggml_tensor *patch_tokens = ggml_graph_get_tensor(graph, "patch_tokens");
+    // classification head
 
 
     // patch_tokens = ggml_cont(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3));
@@ -622,10 +623,10 @@ struct ggml_cgraph *build_graph(
         ctx_cgraph, ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, patch_tokens, 1, 0, 2, 3)));
     pooled_patch_tokens = ggml_scale_inplace(ctx_cgraph, pooled_patch_tokens, 1.0f / (n_img_embd * n_img_embd));
 
-    cur = ggml_concat(ctx_cgraph, cls_token, ggml_permute(
-                          ctx_cgraph, pooled_patch_tokens, 1,
-                          0, 2,
-                          3), 0);
+    struct ggml_tensor *cur = ggml_concat(ctx_cgraph, cls_token, ggml_permute(
+                                              ctx_cgraph, pooled_patch_tokens, 1,
+                                              0, 2,
+                                              3), 0);
 
 
     // std::cout << "cls_token shape " << cls_token->ne[0] << ", " << cls_token->ne[1] << ", " << cls_token->ne[2] << ", "
@@ -646,8 +647,22 @@ struct ggml_cgraph *build_graph(
     ggml_set_output(probs);
     ggml_set_name(probs, "probs");
 
-    ggml_build_forward_expand(gf, patch_tokens);
-    ggml_build_forward_expand(gf, probs);
+    ggml_build_forward_expand(graph, probs);
+}
+
+struct ggml_cgraph *build_graph(
+    struct ggml_context *ctx_cgraph,
+    const dino_model &model,
+    const dino_params &params) {
+    const auto &hparams = model.hparams;
+
+    struct ggml_cgraph *gf = ggml_new_graph(ctx_cgraph);
+
+    forward_features(gf, ctx_cgraph, model, hparams);
+
+    if (params.classify)
+        forward_head(gf, ctx_cgraph, model, hparams);
+
 
     return gf;
 }
@@ -660,6 +675,8 @@ void print_usage(int argc, char **argv, const dino_params &params) {
     fprintf(stderr, "  -m FNAME, --model       model path (default: %s)\n", params.model.c_str());
     fprintf(stderr, "  -i FNAME, --inp         input file (default: %s)\n", params.fname_inp.c_str());
     fprintf(stderr, "  -k N, --topk            top k classes to print (default: %d)\n", params.topk);
+    fprintf(stderr, "  -c, --classify          whether to classify the image or get backbone features (default: %d)\n",
+            params.classify);
     fprintf(stderr, "  -s SEED, --seed         RNG seed (default: -1)\n");
     fprintf(stderr, "  -e FLOAT, --epsilon     epsilon constant in Layer Norm layers (default: %f)\n", params.eps);
     fprintf(stderr, "\n");
@@ -679,6 +696,8 @@ bool dino_params_parse(int argc, char **argv, dino_params &params) {
             params.topk = std::stoi(argv[++i]);
         } else if (arg == "-e" || arg == "--epsilon") {
             params.eps = std::stof(argv[++i]);
+        } else if (arg == "-c" || arg == "--classify") {
+            params.classify = true;
         } else if (arg == "-h" || arg == "--help") {
             print_usage(argc, argv, params);
             exit(0);
@@ -692,17 +711,15 @@ bool dino_params_parse(int argc, char **argv, dino_params &params) {
     return true;
 }
 
-int dino_predict(const dino_model &model, const image_f32 &img1,
-                 const dino_params &params,
-                 std::vector<float> &patch_tokens,
-                 std::vector<std::pair<float, int> > &predictions) {
+std::unique_ptr<dino_output> dino_predict(const dino_model &model, const image_f32 &img1,
+                                          const dino_params &params) {
     struct ggml_init_params params0 = {
         /*.mem_size   =*/ ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead(),
         /*.mem_buffer =*/ nullptr,
         /*.no_alloc   =*/ true, // the tensors will be allocated later by ggml_gallocr_alloc_graph()
     };
     struct ggml_context *ctx_cgraph = ggml_init(params0);
-    struct ggml_cgraph *gf = build_graph(ctx_cgraph, model);
+    struct ggml_cgraph *gf = build_graph(ctx_cgraph, model, params);
 
     ggml_gallocr_t allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
     ggml_gallocr_alloc_graph(allocr, gf);
@@ -732,48 +749,56 @@ int dino_predict(const dino_model &model, const image_f32 &img1,
 
     if (ggml_backend_graph_compute(model.backend, gf) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "%s: ggml_backend_graph_compute() failed\n", __func__);
-        return 1;
+        return {};
     }
 
-    struct ggml_tensor *patches = ggml_graph_get_tensor(gf, "patch_tokens");
-    const float *patch_tokens_data = ggml_get_data_f32(patches);
-    struct ggml_tensor *probs = ggml_graph_get_tensor(gf, "probs");
-    const float *probs_data = ggml_get_data_f32(probs);
 
     // print_t_f32("after probs", state.prediction);
     const int num_patches = model.hparams.n_img_embd() * model.hparams.n_img_embd();
 
-    std::copy_n(patch_tokens_data, num_patches * model.hparams.hidden_size, patch_tokens.begin());
+    auto output = std::make_unique<dino_output>();
 
-    // clear previous predictions, used for topk
-    predictions.clear();
-    // std::vector<std::pair<float, int>> predictions;
+    if (params.classify) {
+        struct ggml_tensor *probs = ggml_graph_get_tensor(gf, "probs");
+        const float *probs_data = ggml_get_data_f32(probs);
+        std::vector<std::pair<float, int> > predictions;
+        // store probability and index
+        for (int i = 0; i < model.hparams.num_classes; ++i) {
+            predictions.emplace_back(probs_data[i], i);
+        }
 
-    // store probability and index
-    for (int i = 0; i < model.hparams.num_classes; ++i) {
-        predictions.emplace_back(probs_data[i], i);
+        // sort in descending order
+        std::sort(predictions.begin(), predictions.end(),
+                  [](const std::pair<float, int> &a, const std::pair<float, int> &b) {
+                      return a.first > b.first;
+                  });
+
+        fprintf(stderr, "\n");
+
+        // top k predictions
+        std::vector<uint32> preds(params.topk);
+        for (int i = 0; i < params.topk && i < predictions.size(); ++i) {
+            printf(" > %s : %.2f\n",
+                   model.hparams.id2label.at(predictions[i].second).c_str(),
+                   predictions[i].first);
+            preds[i] = predictions[i].first;
+        }
+
+        output->preds = preds;
+    } else {
+        struct ggml_tensor *patches = ggml_graph_get_tensor(gf, "patch_tokens");
+        const float *patch_tokens_data = ggml_get_data_f32(patches);
+        std::vector<float> patch_tokens(patch_tokens_data,
+                                        patch_tokens_data + num_patches * model.hparams.hidden_size);
+        output->patch_tokens = patch_tokens;
     }
 
-    // sort in descending order
-    std::sort(predictions.begin(), predictions.end(),
-              [](const std::pair<float, int> &a, const std::pair<float, int> &b) {
-                  return a.first > b.first;
-              });
-
-    fprintf(stderr, "\n");
-
-    // top k predictions
-    for (int i = 0; i < params.topk && i < predictions.size(); ++i) {
-        printf(" > %s : %.2f\n",
-               model.hparams.id2label.at(predictions[i].second).c_str(),
-               predictions[i].first);
-    }
 
     // free memory
     ggml_free(ctx_cgraph);
     ggml_gallocr_free(allocr);
 
 
-    return 0;
+    return output;
 }
 

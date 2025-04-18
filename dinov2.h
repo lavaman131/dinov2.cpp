@@ -8,6 +8,8 @@
 #include <vector>
 #include <cinttypes>
 
+#include "../../../../../Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/Security.framework/Versions/A/Headers/cssmconfig.h"
+
 u_int32_t get_val_u32(const struct gguf_context *ctx,
                       const char *key);
 
@@ -34,6 +36,7 @@ struct dino_hparams {
     int32_t n_img_embd() const;
 };
 
+
 struct dino_model {
     dino_hparams hparams;
     struct ggml_context *ctx;
@@ -41,6 +44,12 @@ struct dino_model {
     ggml_backend_buffer_t buffer;
     std::map<std::string, struct ggml_tensor *> tensors;
 };
+
+void *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                       const dino_model &model, const dino_hparams &hparams);
+
+void *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                   const dino_model &model, const dino_hparams &hparams);
 
 struct image_u8 {
     int nx;
@@ -57,9 +66,15 @@ struct image_f32 {
 struct dino_params {
     int32_t seed = -1;
     int32_t topk = 5;
+    bool classify = false;
     std::string model = "../ggml-model-f16.gguf"; // model path
     std::string fname_inp = "../assets/tench.jpg"; // image path
     float eps = 1e-6f; // epsilon used in LN
+};
+
+struct dino_output {
+    std::vector<uint32> preds;
+    std::vector<float> patch_tokens;
 };
 
 void print_t_f32(const char *title, const struct ggml_tensor *t, int n);
@@ -74,11 +89,11 @@ bool dino_model_load(const std::string &fname, dino_model &model);
 
 struct ggml_cgraph *build_graph(
     struct ggml_context *ctx_cgraph,
-    const dino_model &model);
+    const dino_model &model,
+    const dino_params &params);
 
-int dino_predict(const dino_model &model, const image_f32 &img1, const dino_params &params,
-                 std::vector<float> &patch_tokens,
-                 std::vector<std::pair<float, int> > &predictions);
+std::unique_ptr<dino_output> dino_predict(const dino_model &model, const image_f32 &img1,
+                                          const dino_params &params);
 
 void print_usage(int argc, char **argv, const dino_params &params);
 

@@ -73,14 +73,12 @@ int main(int argc, char **argv) {
     {
         // printf("%s: Initialized context = %ld bytes\n", __func__, buf_size);
         // } {
-        const int num_patches = model.hparams.n_img_embd() * model.hparams.n_img_embd();
-        std::vector<float> patch_tokens;
-        patch_tokens.resize(num_patches * model.hparams.hidden_size);
-        std::vector<std::pair<float, int> > predictions;
+
 
         // run prediction on img1
         const int64_t t_start_ms = ggml_time_ms();
-        dino_predict(model, img1, params, patch_tokens, predictions);
+        std::unique_ptr<dino_output> output = dino_predict(model, img1, params);
+
         const int64_t t_predict_ms = ggml_time_ms() - t_start_ms;
 
         // report timing
