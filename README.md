@@ -136,7 +136,7 @@ mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
 ./bin/dinov2 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 
-# MacOS with Apple silicon
+# MacOS with Apple silicon (Metal)
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release \
   -DGGML_METAL=ON .. && make -j 4
