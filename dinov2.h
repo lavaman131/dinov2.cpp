@@ -2,20 +2,11 @@
 
 #include "ggml.h"
 #include "ggml-alloc.h"
-#include "ggml/examples/stb_image.h"
-
-#include <cassert>
-#include <cmath>
-#include <cstddef>
-#include <cstdio>
-#include <cstring>
 #include <fstream>
 #include <map>
 #include <string>
 #include <vector>
-#include <thread>
 #include <cinttypes>
-#include <algorithm>
 
 u_int32_t get_val_u32(const struct gguf_context *ctx,
                       const char *key);
@@ -43,46 +34,8 @@ struct dino_hparams {
     int32_t n_img_embd() const;
 };
 
-struct dino_block {
-    struct ggml_tensor *norm1_w;
-    struct ggml_tensor *norm1_b;
-    struct ggml_tensor *q_w;
-    struct ggml_tensor *q_b;
-    struct ggml_tensor *k_w;
-    struct ggml_tensor *k_b;
-    struct ggml_tensor *v_w;
-    struct ggml_tensor *v_b;
-    struct ggml_tensor *dense_w;
-    struct ggml_tensor *dense_b;
-    struct ggml_tensor *layer_scale1_lam;
-    struct ggml_tensor *norm2_w;
-    struct ggml_tensor *norm2_b;
-    struct ggml_tensor *fc1_w;
-    struct ggml_tensor *fc1_b;
-    struct ggml_tensor *fc2_w;
-    struct ggml_tensor *fc2_b;
-    struct ggml_tensor *layer_scale2_lam;
-};
-
-struct classifier_head {
-    struct ggml_tensor *norm_w;
-    struct ggml_tensor *norm_b;
-    struct ggml_tensor *head_w;
-    struct ggml_tensor *head_b;
-};
-
-struct dino_image_encoder {
-    struct ggml_tensor *pos_embed;
-    struct ggml_tensor *cls_token;
-    struct ggml_tensor *patch_embed_w;
-    struct ggml_tensor *patch_embed_b;
-    std::vector<dino_block> layers;
-};
-
 struct dino_model {
     dino_hparams hparams;
-    dino_image_encoder enc_img;
-    classifier_head classifier;
     struct ggml_context *ctx;
     ggml_backend_t backend = nullptr;
     ggml_backend_buffer_t buffer;
@@ -103,7 +56,6 @@ struct image_f32 {
 
 struct dino_params {
     int32_t seed = -1;
-    int32_t n_threads = std::min(4, (int32_t) std::thread::hardware_concurrency());
     int32_t topk = 5;
     std::string model = "../ggml-model-f16.gguf"; // model path
     std::string fname_inp = "../assets/tench.jpg"; // image path
@@ -113,8 +65,6 @@ struct dino_params {
 void print_t_f32(const char *title, const struct ggml_tensor *t, int n);
 
 static void ggml_disconnect_node_from_graph(ggml_tensor *t);
-
-void ggml_graph_compute_helper(std::vector<uint8_t> &buf, ggml_cgraph *graph, int n_threads);
 
 bool load_image_from_file(const std::string &fname, image_u8 &img);
 

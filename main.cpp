@@ -27,8 +27,6 @@
 // main function
 int main(int argc, char **argv) {
     ggml_time_init();
-    const int64_t t_main_start_us = ggml_time_us();
-
     dino_params params;
 
     image_u8 img0;
@@ -46,8 +44,6 @@ int main(int argc, char **argv) {
         params.seed = time(nullptr);
     }
     fprintf(stderr, "%s: seed = %d\n", __func__, params.seed);
-    fprintf(stderr, "%s: n_threads = %d / %d\n", __func__, params.n_threads,
-            (int32_t) std::thread::hardware_concurrency());
 
     // load the model
     {
@@ -83,18 +79,17 @@ int main(int argc, char **argv) {
         std::vector<std::pair<float, int> > predictions;
 
         // run prediction on img1
+        const int64_t t_start_ms = ggml_time_ms();
         dino_predict(model, img1, params, patch_tokens, predictions);
+        const int64_t t_predict_ms = ggml_time_ms() - t_start_ms;
+
+        // report timing
+
+        fprintf(stderr, "\n\n");
+        fprintf(stderr, "%s: forward pass time = %8.2lld ms\n", __func__,
+                t_predict_ms);
     }
 
-    // report timing
-    {
-        const int64_t t_main_end_us = ggml_time_us();
-        fprintf(stderr, "\n\n");
-        fprintf(stderr, "%s:    model load time = %8.2f ms\n", __func__, t_load_us / 1000.0f);
-        fprintf(stderr, "%s:    processing time = %8.2f ms\n", __func__,
-                (t_main_end_us - t_main_start_us - t_load_us) / 1000.0f);
-        fprintf(stderr, "%s:    total time      = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us) / 1000.0f);
-    }
 
     ggml_free(model.ctx);
     ggml_backend_buffer_free(model.buffer);
