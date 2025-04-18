@@ -137,11 +137,11 @@ cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
 ./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 
 # MacOS with Apple silicon
-cmake -B build -S . \
-  -DCMAKE_BUILD_TYPE=Release \
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release \
   -DGGML_METAL=ON \
-  -DGGML_METAL_EMBED_LIBRARY=ON
-cmake --build build --config Release
+  -DGGML_METAL_EMBED_LIBRARY=ON .. && make -j 4
+./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 
 ```bash
