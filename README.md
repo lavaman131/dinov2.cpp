@@ -14,24 +14,24 @@ diverse platforms.
 <summary>Table of Contents</summary>
 
 - [dinov2.cpp](#dinov2cpp)
-  - [Description](#description)
-  - [Features](#features)
-  - [Vision Transformer architecture](#vision-transformer-architecture)
-  - [Quick example](#quick-example)
-  - [Convert PyTorch to GGUF](#convert-pytorch-to-gguf)
-  - [Build](#build)
-    - [Simple build](#simple-build)
-    - [Per device optimizations](#per-device-optimizations)
-      - [For AMD host processors](#for-amd-host-processors)
-    - [Using OpenMP](#using-openmp)
-  - [Run](#run)
-  - [Benchmark against PyTorch](#benchmark-against-pytorch)
-    - [ViT inference](#vit-inference)
-    - [Benchmark on your machine](#benchmark-on-your-machine)
-  - [Quantization](#quantization)
-    - [Results](#results)
-  - [To-Do List](#to-do-list)
-  - [Star History](#star-history)
+    - [Description](#description)
+    - [Features](#features)
+    - [Vision Transformer architecture](#vision-transformer-architecture)
+    - [Quick example](#quick-example)
+    - [Convert PyTorch to GGUF](#convert-pytorch-to-gguf)
+    - [Build](#build)
+        - [Simple build](#simple-build)
+        - [Per device optimizations](#per-device-optimizations)
+            - [For AMD host processors](#for-amd-host-processors)
+        - [Using OpenMP](#using-openmp)
+    - [Run](#run)
+    - [Benchmark against PyTorch](#benchmark-against-pytorch)
+        - [ViT inference](#vit-inference)
+        - [Benchmark on your machine](#benchmark-on-your-machine)
+    - [Quantization](#quantization)
+        - [Results](#results)
+    - [To-Do List](#to-do-list)
+    - [Star History](#star-history)
 
 </details>
 
@@ -116,7 +116,6 @@ uv sync --frozen
 # convert the weights to gguf : vit tiny with patch size of 16 and an image 
 # size of 384 pre-trained on ImageNet21k and fine-tuned on ImageNet1k
 # DINOv2 weights are always fp16
-python ./scripts/dinov2-to-ggml.py --model_name facebook/dinov2-small-imagenet1k-1-layer --ftype 1
 python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-small-imagenet1k-1-layer --ftype 1
 python ./scripts/vit-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_in1k --ftype 1
 
@@ -204,7 +203,7 @@ Using 4 threads gives better results for my machine. The reported results of inf
 averages for both PyTorch and `vit.cpp`.
 
 | Model | Max Mem(PyTorch) |   Max Mem   | Speed(PyTorch) |    Speed    |
-| :---: | :--------------: | :---------: | :------------: | :---------: |
+|:-----:|:----------------:|:-----------:|:--------------:|:-----------:|
 | tiny  |     ~780 MB      | **~20 MB**  |     431 ms     | **120 ms**  |
 | small |     ~965 MB      | **~52 MB**  |     780 ms     | **463 ms**  |
 | base  |     ~1.61 GB     | **~179 MB** |    2393 ms     | **1441 ms** |
@@ -264,7 +263,7 @@ Here are the benchmarks for the different models and quantizations on my machine
 For accurate estimation of run times, these benchmarks were run 100 times each.
 
 | Model | Quantization | Speed (ms) | Mem (MB) |
-| :---: | :----------: | :--------: | :------: |
+|:-----:|:------------:|:----------:|:--------:|
 | tiny  |     q4_0     |   105 ms   |  12 MB   |
 | tiny  |     q4_1     |   97 ms    |  12 MB   |
 | tiny  |     q5_0     |   116 ms   |  13 MB   |

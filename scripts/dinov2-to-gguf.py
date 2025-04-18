@@ -51,6 +51,7 @@ def main() -> None:
         "num_classes": len(id2label),
         "patch_size": config.patch_size,
         "img_size": config.image_size,
+        "ftype": args.ftype,
     }
 
     print(hparams)
@@ -59,8 +60,6 @@ def main() -> None:
         path=fname_out,
         arch="dinov2",
     )
-
-    gguf_writer.add_file_type(args.ftype)
 
     write_hparams(gguf_writer, hparams)
 
@@ -123,8 +122,8 @@ def save_tensor(
     )
     data = data.astype(np.float32) if ftype == 0 else data.astype(np.float16)
 
-    if name == "embeddings.patch_embeddings.projection.bias":
-        data = data.reshape(1, data.shape[0], 1, 1)
+    # if name == "embeddings.patch_embeddings.projection.bias":
+    #     data = data.reshape(1, data.shape[0], 1, 1)
 
     writer.add_tensor(name, data)
 

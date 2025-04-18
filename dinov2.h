@@ -17,6 +17,11 @@
 #include <cinttypes>
 #include <algorithm>
 
+u_int32_t get_val_u32(const struct gguf_context *ctx,
+                      const char *key);
+
+const char *get_val_str(const struct gguf_context *ctx, const char *key);
+
 struct dino_hparams {
     int32_t hidden_size = 768;
     int32_t num_hidden_layers = 12;
@@ -74,16 +79,6 @@ struct dino_image_encoder {
     std::vector<dino_block> layers;
 };
 
-struct dino_state {
-    struct ggml_tensor *prediction;
-    struct ggml_tensor *patch_tokens;
-    struct ggml_context *ctx;
-    std::vector<uint8_t> work_buffer;
-    std::vector<uint8_t> buf_alloc_img_enc;
-    std::vector<uint8_t> buf_compute_img_enc;
-    ggml_gallocr_t allocr = {};
-};
-
 struct dino_model {
     dino_hparams hparams;
     dino_image_encoder enc_img;
@@ -127,9 +122,12 @@ bool dino_image_preprocess(const image_u8 &img, image_f32 &res, const dino_hpara
 
 bool dino_model_load(const std::string &fname, dino_model &model);
 
-struct ggml_cgraph *dino_encode_image(const dino_model &model, dino_state &state, const image_f32 &img);
+struct ggml_cgraph *build_graph(
+    struct ggml_context *ctx_cgraph,
+    const dino_model &model);
 
-int dino_predict(const dino_model &model, dino_state &state, const image_f32 img1, const dino_params &params,
+int dino_predict(const dino_model &model, const image_f32 &img1, const dino_params &params,
+                 std::vector<float> &patch_tokens,
                  std::vector<std::pair<float, int> > &predictions);
 
 void print_usage(int argc, char **argv, const dino_params &params);
