@@ -333,6 +333,7 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
         struct ggml_tensor *src = ggml_get_tensor(tmp_ctx, name);
         struct ggml_tensor *dst = ggml_dup_tensor(model.ctx, src);
         ggml_set_name(dst, name);
+        model.tensors[name] = dst;
     }
     model.buffer = ggml_backend_alloc_ctx_tensors(model.ctx, model.backend);
     // copy tensors from main memory to backend
@@ -378,98 +379,7 @@ bool dino_model_load(const std::string &fname, dino_model &model) {
 
     gguf_free(gguf_ctx);
 
-
-    // prepare memory for the weights
-    {
-        const auto &hparams = model.hparams;
-        const int32_t hidden_size = hparams.hidden_size;
-        const int32_t num_hidden_layers = hparams.num_hidden_layers;
-        const int32_t num_attention_heads = hparams.num_attention_heads;
-        const int32_t num_classes = hparams.num_classes;
-        const int32_t n_img_embd = hparams.n_img_embd();
-        const int32_t n_patch_size = hparams.n_patch_size();
-        // image encoder
-        {
-            model.tensors["embeddings.position_embeddings"] = ggml_get_tensor(
-                model.ctx, "embeddings.position_embeddings");
-            model.tensors["embeddings.cls_token"] = ggml_get_tensor(model.ctx, "embeddings.cls_token");
-            model.tensors["embeddings.patch_embeddings.projection.weight"] = ggml_get_tensor(
-                model.ctx, "embeddings.patch_embeddings.projection.weight");
-            model.tensors["embeddings.patch_embeddings.projection.bias"] = ggml_get_tensor(
-                model.ctx, "embeddings.patch_embeddings.projection.bias");
-            for (int i = 0; i < num_hidden_layers; ++i) {
-                // auto &layer = enc.layers[i];
-                model.tensors["encoder.layer." + std::to_string(i) + ".norm1.weight"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".norm1.weight").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".norm1.bias"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".norm1.bias").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.query.weight"] =
-                        ggml_get_tensor(
-                            model.ctx,
-                            std::string("encoder.layer." + std::to_string(i) + ".attention.attention.query.weight").
-                            c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.query.bias"] =
-                        ggml_get_tensor(
-                            model.ctx,
-                            std::string("encoder.layer." + std::to_string(i) + ".attention.attention.query.bias").
-                            c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.key.weight"] =
-                        ggml_get_tensor(
-                            model.ctx,
-                            std::string("encoder.layer." + std::to_string(i) + ".attention.attention.key.weight").
-                            c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.key.bias"] = ggml_get_tensor(
-                    model.ctx,
-                    std::string("encoder.layer." + std::to_string(i) + ".attention.attention.key.bias").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.value.weight"] =
-                        ggml_get_tensor(
-                            model.ctx, std::string(
-                                "encoder.layer." + std::to_string(i) + ".attention.attention.value.weight").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".attention.attention.value.bias"] =
-                        ggml_get_tensor(
-                            model.ctx, std::string(
-                                "encoder.layer." + std::to_string(i) + ".attention.attention.value.bias").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.dense.weight"] =
-                        ggml_get_tensor(
-                            model.ctx, std::string(
-                                "encoder.layer." + std::to_string(i) + ".attention.output.dense.weight").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.dense.bias"] = ggml_get_tensor(
-                    model.ctx,
-                    std::string("encoder.layer." + std::to_string(i) + ".attention.output.dense.bias").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".layer_scale1.lambda1"] =
-                        ggml_get_tensor(
-                            model.ctx, std::string(
-                                "encoder.layer." + std::to_string(i) + ".layer_scale1.lambda1").
-                            c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".norm2.weight"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".norm2.weight").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".norm2.bias"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".norm2.bias").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc1.weight"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".mlp.fc1.weight").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc1.bias"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".mlp.fc1.bias").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc2.weight"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".mlp.fc2.weight").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".mlp.fc2.bias"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".mlp.fc2.bias").c_str());
-                model.tensors["encoder.layer." + std::to_string(i) + ".layer_scale2.lambda1"] = ggml_get_tensor(
-                    model.ctx, std::string("encoder.layer." + std::to_string(i) + ".layer_scale2.lambda1").c_str());
-            }
-        }
-        // classifier
-        {
-            model.tensors["layernorm.weight"] = ggml_get_tensor(
-                model.ctx, "layernorm.weight");
-            model.tensors["layernorm.bias"] = ggml_get_tensor(
-                model.ctx, "layernorm.bias");
-            model.tensors["classifier.weight"] = ggml_get_tensor(
-                model.ctx, "classifier.weight");
-            model.tensors["classifier.bias"] = ggml_get_tensor(
-                model.ctx, "classifier.bias");
-        }
-        return true;
-    }
+    return true;
 }
 
 //
