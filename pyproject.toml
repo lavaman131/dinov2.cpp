@@ -17,6 +17,7 @@ dependencies = [
     "transformers[torch]",
     "memory-profiler",
     "threadpoolctl",
+    "gguf",
 ]
 
 [tool.uv.sources]

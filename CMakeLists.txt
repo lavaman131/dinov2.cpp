@@ -39,3 +39,11 @@ if (BUILD_QUANTIZE)
     target_include_directories(quantize PUBLIC .)
     target_compile_features(quantize PUBLIC cxx_std_17)
 endif ()
+
+if (GGML_CUDA)
+    add_compile_definitions(GGML_USE_CUDA)
+endif ()
+
+if (GGML_METAL)
+    add_compile_definitions(GGML_USE_METAL)
+endif ()

@@ -89,6 +89,8 @@ struct dino_model {
     dino_image_encoder enc_img;
     classifier_head classifier;
     struct ggml_context *ctx;
+    ggml_backend_t backend = nullptr;
+    ggml_backend_buffer_t buffer;
     std::map<std::string, struct ggml_tensor *> tensors;
 };
 

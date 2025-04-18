@@ -18,6 +18,8 @@
 #include <cinttypes>
 #include <algorithm>
 
+#include "ggml-backend.h"
+
 #if defined(_MSC_VER)
 #pragma warning(disable : 4244 4267) // possible loss of data
 #endif
@@ -105,6 +107,8 @@ int main(int argc, char **argv) {
     }
 
     ggml_free(model.ctx);
+    ggml_backend_buffer_free(model.buffer);
+    ggml_backend_free(model.backend);
 
     return 0;
 }

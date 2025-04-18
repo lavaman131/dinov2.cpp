@@ -23,6 +23,14 @@
 
 #include "ggml/src/ggml-impl.h"
 
+#ifdef GGML_USE_CUDA
+#include "ggml-cuda.h"
+#endif
+
+#ifdef GGML_USE_METAL
+#include "ggml-metal.h"
+#endif
+
 #if defined(_MSC_VER)
 #pragma warning(disable : 4244 4267) // possible loss of data
 #endif
@@ -278,6 +286,26 @@ bool dino_image_preprocess(const image_u8 &img, image_f32 &res, const dino_hpara
 // load the model's weights from a file following the ggml format(gguf)
 bool dino_model_load(const std::string &fname, dino_model &model) {
     printf("%s: loading model from '%s' - please wait\n", __func__, fname.c_str());
+#ifdef GGML_USE_CUDA
+    fprintf(stderr, "%s: using CUDA backend\n", __func__);
+    model.backend = ggml_backend_cuda_init(0); // init device 0
+    if (!model.backend) {
+        fprintf(stderr, "%s: ggml_backend_cuda_init() failed\n", __func__);
+    }
+#endif
+
+#ifdef GGML_USE_METAL
+    fprintf(stderr, "%s: using Metal backend\n", __func__);
+    model.backend = ggml_backend_metal_init();
+    if (!model.backend) {
+        fprintf(stderr, "%s: ggml_backend_metal_init() failed\n", __func__);
+    }
+#endif
+
+    // if there aren't GPU Backends fallback to CPU backend
+    if (!model.backend) {
+        model.backend = ggml_backend_cpu_init();
+    }
 
     auto fin = std::ifstream(fname, std::ios::binary);
     if (!fin) {
@@ -1029,7 +1057,7 @@ int dino_predict(const dino_model &model, dino_state &state, const image_f32 img
                  std::vector<std::pair<float, int> > &predictions) {
     // first build the graph and record memory requirements
     state.buf_compute_img_enc.resize(ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead());
-    state.allocr = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
+    state.allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
 
     struct ggml_cgraph *gf = dino_encode_image(model, state, img1);
     if (!gf) {
@@ -1054,7 +1082,7 @@ int dino_predict(const dino_model &model, dino_state &state, const image_f32 img
 
     // store probability and index
     for (int i = 0; i < model.hparams.num_classes; ++i) {
-        predictions.push_back(std::make_pair(probs_data[i], i));
+        predictions.emplace_back(probs_data[i], i);
     }
 
     // sort in descending order
