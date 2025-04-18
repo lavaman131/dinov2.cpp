@@ -6,7 +6,6 @@ import torch
 from transformers import AutoModel, AutoConfig, AutoModelForImageClassification
 from gguf import GGUFWriter, GGUFEndian
 
-
 DATA_TYPES = ["f32", "f16"]
 
 
@@ -56,16 +55,17 @@ def main() -> None:
 
     print(hparams)
 
-    fout = GGUFWriter(
+    gguf_writer = GGUFWriter(
         path=fname_out,
         arch="dinov2",
-        endianess=GGUFEndian.LITTLE,
     )
 
-    write_hparams(fout, hparams)
+    gguf_writer.add_file_type(args.ftype)
+
+    write_hparams(gguf_writer, hparams)
 
     # Write id2label dictionary to the file
-    write_id2label(fout, id2label)
+    write_id2label(gguf_writer, id2label)
 
     # Process and write model weights
     for k, v in model.state_dict().items():
@@ -77,14 +77,19 @@ def main() -> None:
             " and type: ",
             v.dtype,
         )
-        save_tensor(fout, k, v, args.ftype)
+        save_tensor(gguf_writer, k, v, args.ftype)
+
+    gguf_writer.write_header_to_file()
+    gguf_writer.write_kv_data_to_file()
+    gguf_writer.write_tensors_to_file()
+    gguf_writer.close()
 
     print("Done. Output file: " + fname_out)
 
 
-def write_id2label(writer: GGUFWriter, id2label: Dict[str, str]) -> None:
+def write_id2label(writer: GGUFWriter, id2label: Dict[int, str]) -> None:
     for key, value in id2label.items():
-        writer.add_string(key, value)
+        writer.add_string(str(key), value)
 
 
 def write_hparams(writer: GGUFWriter, hparams: Dict[str, int]) -> None:
@@ -98,7 +103,7 @@ def write_hparams(writer: GGUFWriter, hparams: Dict[str, int]) -> None:
 
 
 def save_tensor(
-    writer: GGUFWriter, name: str, tensor: torch.Tensor, ftype: int
+        writer: GGUFWriter, name: str, tensor: torch.Tensor, ftype: int
 ) -> None:
     data = tensor.numpy()
 
@@ -107,13 +112,13 @@ def save_tensor(
     ftype = (
         1
         if ftype == 1
-        and tensor.ndim != 1
-        and name
-        not in {
-            "embeddings.position_embeddings",
-            "embeddings.cls_token",
-            "embeddings.register_tokens",
-        }
+           and tensor.ndim != 1
+           and name
+           not in {
+               "embeddings.position_embeddings",
+               "embeddings.cls_token",
+               "embeddings.register_tokens",
+           }
         else 0
     )
     data = data.astype(np.float32) if ftype == 0 else data.astype(np.float16)
