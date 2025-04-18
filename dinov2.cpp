@@ -506,7 +506,7 @@ struct ggml_cgraph *build_graph(
 
     // patch embedding
     // (37, 37, 768, 1)
-    std::cout << "patch embed " << enc.patch_embed_w->ne[0] << std::endl;
+    // std::cout << "patch embed " << enc.patch_embed_w->ne[0] << std::endl;
     struct ggml_tensor *cur = ggml_conv_2d_sk_p0(ctx_cgraph, enc.patch_embed_w, input);
     // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3] <<
     //         std::endl;
@@ -689,9 +689,12 @@ struct ggml_cgraph *build_graph(
     //         [2] << ", "
     //         << patch_tokens->ne[3] << std::endl;
 
+    struct ggml_tensor *pooled_patch_tokens = ggml_sum_rows(
+        ctx_cgraph, ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, patch_tokens, 1, 0, 2, 3)));
+    pooled_patch_tokens = ggml_scale_inplace(ctx_cgraph, pooled_patch_tokens, 1.0f / (n_img_embd * n_img_embd));
+
     cur = ggml_concat(ctx_cgraph, cls_token, ggml_permute(
-                          ctx_cgraph, ggml_mean(
-                              ctx_cgraph, ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, patch_tokens, 1, 0, 2, 3))), 1,
+                          ctx_cgraph, pooled_patch_tokens, 1,
                           0, 2,
                           3), 0);
 
