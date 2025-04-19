@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 #include <cinttypes>
+#include <optional>
+#include <memory>
 
 uint32_t get_val_u32(const struct gguf_context *ctx,
                      const char *key);
