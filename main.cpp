@@ -5,6 +5,8 @@
 #include "ggml-alloc.h"
 #include "ggml/examples/stb_image.h" // stb image load
 
+#include <opencv2/opencv.hpp>
+
 #include <cassert>
 #include <cmath>
 #include <cstddef>

@@ -32,7 +32,9 @@ add_subdirectory(ggml)
 # dinov2 executable
 add_executable(${PROJECT_NAME} main.cpp dinov2.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
-target_include_directories(${PROJECT_NAME} PUBLIC .)
+target_include_directories(${PROJECT_NAME} PUBLIC . ${OpenCV_INCLUDE_DIRS})
+
+add_dependencies(${PROJECT_NAME} OpenCV)
 
 # quantize executable
 option(BUILD_QUANTIZE "Build the quantization executable" ON)
