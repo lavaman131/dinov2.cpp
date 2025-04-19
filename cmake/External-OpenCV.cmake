@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 
 if (NOT OpenCV_TAG)
-    set(OpenCV_TAG "4.10.0")
+    set(OpenCV_TAG "4.x")
 endif ()
 
 set(OpenCV_INSTALL_DIR ${CMAKE_BINARY_DIR}/opencv-install)
