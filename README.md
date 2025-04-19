@@ -133,6 +133,10 @@ python ./scripts/vit-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_f
 
 ### Simple build
 
+#### Install OpenCV
+
+Refer to instructions on the [OpenCV]((https://opencv.org/get-started/)) website to install OpenCV on your machine.
+
 Add the `-c` flag when running to return the output predictions. Omitting the flag (by default) will return the patch
 tokens.
 

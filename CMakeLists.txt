@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.22.1)
 project(dinov2
         DESCRIPTION "Inference Vision Transformer (ViT) in plain C/C++ with ggml"
         HOMEPAGE_URL "https://github.com/staghado/vit.cpp")
@@ -19,35 +19,27 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -march=native")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 
-
 # Additional flags for C++ (the ffast-math is to be used with caution!)
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
 # deps
 add_subdirectory(ggml)
 
-include(FetchContent)
-FetchContent_Declare(
-        opencv
-        GIT_REPOSITORY https://github.com/opencv/opencv.git
-        GIT_TAG "4.x"
-)
-FetchContent_MakeAvailable(opencv)
-
-set(OpenCV_DIR ${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${OpenCV_INCLUDE_DIRS})
+# Find OpenCV, you may need to set OpenCV_DIR variable
+# to the absolute path to the directory containing OpenCVConfig.cmake file
+# via the command line or GUI
 find_package(OpenCV REQUIRED)
 
 # dinov2 executable
 add_executable(${PROJECT_NAME} main.cpp dinov2.cpp)
-target_include_directories(${PROJECT_NAME} PUBLIC .)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
+target_include_directories(${PROJECT_NAME} PUBLIC .)
 
 # quantize executable
-#option(BUILD_QUANTIZE "Build the quantization executable" ON)
-#
-#if (BUILD_QUANTIZE)
-#    add_executable(quantize quantize.cpp)
-#    target_link_libraries(quantize PUBLIC ggml)
-#    target_include_directories(quantize PUBLIC .)
-#endif ()
+option(BUILD_QUANTIZE "Build the quantization executable" ON)
+
+if (BUILD_QUANTIZE)
+    add_executable(quantize quantize.cpp)
+    target_link_libraries(quantize PUBLIC ggml)
+    target_include_directories(quantize PUBLIC .)
+endif ()
