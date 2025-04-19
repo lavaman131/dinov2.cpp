@@ -22,6 +22,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(External-OpenCV)
 
+
 # Additional flags for C++ (the ffast-math is to be used with caution!)
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
@@ -30,8 +31,7 @@ add_subdirectory(ggml)
 
 # dinov2 executable
 add_executable(${PROJECT_NAME} main.cpp dinov2.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} PUBLIC ggml)
-include_directories(example PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
 target_include_directories(${PROJECT_NAME} PUBLIC .)
 
 # quantize executable
