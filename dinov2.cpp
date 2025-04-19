@@ -389,8 +389,8 @@ bool dino_model_load(const std::string &fname, dino_model &model, const dino_par
 
 // DINOv2 Encoder
 
-void *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
-                       const dino_model &model, const dino_params &params) {
+int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                      const dino_model &model, const dino_params &params) {
     const int32_t hidden_size = model.hparams.hidden_size;
     const int32_t num_hidden_layers = model.hparams.num_hidden_layers;
     const int32_t num_attention_heads = model.hparams.num_attention_heads;
@@ -651,10 +651,12 @@ void *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgrap
     ggml_set_output(patch_tokens);
     ggml_set_name(patch_tokens, "patch_tokens");
     ggml_build_forward_expand(graph, patch_tokens);
+
+    return nullptr;
 }
 
-void *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
-                   const dino_model &model, const dino_params &params) {
+int *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                  const dino_model &model, const dino_params &params) {
     const int32_t n_img_embd = model.hparams.n_img_embd();
 
     struct ggml_tensor *cls_token = ggml_graph_get_tensor(graph, "cls_token");
@@ -700,6 +702,8 @@ void *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
     ggml_set_name(probs, "probs");
 
     ggml_build_forward_expand(graph, probs);
+
+    return nullptr;
 }
 
 struct ggml_cgraph *build_graph(

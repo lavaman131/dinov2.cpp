@@ -68,11 +68,11 @@ struct dino_params {
     float eps = 1e-6f; // epsilon used in LN
 };
 
-void *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
-                       const dino_model &model, const dino_params &params);
+int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                      const dino_model &model, const dino_params &params);
 
-void *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
-                   const dino_model &model, const dino_params &params);
+int *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                  const dino_model &model, const dino_params &params);
 
 struct dino_output {
     std::optional<std::vector<uint32_t> > preds;
