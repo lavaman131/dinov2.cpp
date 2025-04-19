@@ -40,9 +40,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (params.seed < 0) {
-        params.seed = time(nullptr);
-    }
     fprintf(stderr, "%s: seed = %d\n", __func__, params.seed);
 
     // load the model

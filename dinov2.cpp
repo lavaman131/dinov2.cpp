@@ -34,24 +34,24 @@
 #pragma warning(disable : 4244 4267) // possible loss of data
 #endif
 
-int32_t dino_hparams::n_enc_head_dim() const {
+uint32_t dino_hparams::n_enc_head_dim() const {
     return hidden_size / num_attention_heads;
 }
 
-int32_t dino_hparams::n_img_size() const {
+uint32_t dino_hparams::n_img_size() const {
     return img_size;
 }
 
-int32_t dino_hparams::n_patch_size() const {
+uint32_t dino_hparams::n_patch_size() const {
     return patch_size;
 }
 
-int32_t dino_hparams::n_img_embd() const {
+uint32_t dino_hparams::n_img_embd() const {
     return n_img_size() / n_patch_size();
 }
 
-u_int32_t get_val_u32(const struct gguf_context *ctx,
-                      const char *key) {
+uint32_t get_val_u32(const struct gguf_context *ctx,
+                     const char *key) {
     const int64_t key_id = gguf_find_key(ctx, key);
     assert(key_id >= 0);
     return gguf_get_val_u32(
@@ -833,7 +833,7 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const image_f
             printf(" > %s : %.2f\n",
                    model.hparams.id2label.at(predictions[i].second).c_str(),
                    predictions[i].first);
-            preds[i] = predictions[i].first;
+            preds[i] = static_cast<uint32_t>(predictions[i].first);
         }
 
         output->preds = preds;

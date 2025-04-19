@@ -8,31 +8,31 @@
 #include <vector>
 #include <cinttypes>
 
-u_int32_t get_val_u32(const struct gguf_context *ctx,
-                      const char *key);
+uint32_t get_val_u32(const struct gguf_context *ctx,
+                     const char *key);
 
 const char *get_val_str(const struct gguf_context *ctx, const char *key);
 
 struct dino_hparams {
-    int32_t hidden_size = 768;
-    int32_t num_hidden_layers = 12;
-    int32_t num_attention_heads = 12;
-    int32_t num_classes = 1000;
-    int32_t num_register_tokens = 0;
-    int32_t patch_size = 8;
-    int32_t img_size = 224;
-    int32_t ftype = 1;
+    uint32_t hidden_size = 768;
+    uint32_t num_hidden_layers = 12;
+    uint32_t num_attention_heads = 12;
+    uint32_t num_classes = 1000;
+    uint32_t num_register_tokens = 0;
+    uint32_t patch_size = 8;
+    uint32_t img_size = 224;
+    uint32_t ftype = 1;
     float eps = 1e-6f;
     std::string interpolation = "bicubic";
     std::map<int, std::string> id2label;
 
-    int32_t n_enc_head_dim() const;
+    uint32_t n_enc_head_dim() const;
 
-    int32_t n_img_size() const;
+    uint32_t n_img_size() const;
 
-    int32_t n_patch_size() const;
+    uint32_t n_patch_size() const;
 
-    int32_t n_img_embd() const;
+    uint32_t n_img_embd() const;
 };
 
 
@@ -58,8 +58,8 @@ struct image_f32 {
 };
 
 struct dino_params {
-    int32_t seed = -1;
-    int32_t topk = 5;
+    uint32_t seed = 42;
+    uint32_t topk = 5;
     bool classify = false;
     std::string model = "../ggml-model-f16.gguf"; // model path
     std::string fname_inp = "../assets/tench.jpg"; // image path
