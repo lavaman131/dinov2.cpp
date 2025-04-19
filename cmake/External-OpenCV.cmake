@@ -24,27 +24,7 @@ ExternalProject_Add(OpenCV
         -DCMAKE_INSTALL_PREFIX=${OpenCV_INSTALL_DIR}
 )
 
-find_package(OpenCV REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIRS})
-
-#if (NOT OpenCV_TAG)
-#    set(OpenCV_TAG "4.x")
-#endif ()
-#
-#set(OpenCV_INSTALL_DIR ${CMAKE_BINARY_DIR}/opencv-install)
-#set(CMAKE_PREFIX_PATH ${OpenCV_INSTALL_DIR})
-#find_package(OpenCV)
-#
-#if (${OpenCV_FOUND})
-#    message(STATUS "OpenCV found: ${OpenCV_DIR}")
-#    include_directories(${OpenCV_INCLUDE_DIRS})
-#else ()
-#    message(STATUS "OpenCV not found. Downloading and building from
-#  source...")
-#    include(ExternalProject)
-#
-#    set(CMAKE_PREFIX_PATH ${OpenCV_INSTALL_DIR})
-#    set(OpenCV_DIR ${OpenCV_INSTALL_DIR})
-#    include_directories(${OpenCV_INCLUDE_DIRS})
-#    link_directories(${OpenCV_CONFIG_PATH})
-#endif ()
+set(OpenCV_DIR ${OpenCV_INSTALL_DIR}/lib/cmake/opencv4)
+set(CMAKE_PREFIX_PATH ${OpenCV_INSTALL_DIR})
+set(OpenCV_INCLUDE_DIRS ${OpenCV_INSTALL_DIR}/include/opencv4)
+find_package(OpenCV REQUIRED NO_MODULE)
