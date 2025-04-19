@@ -828,7 +828,7 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const image_f
         fprintf(stderr, "\n");
 
         // top k predictions
-        std::vector<uint32> preds(params.topk);
+        std::vector<uint32_t> preds(params.topk);
         for (int i = 0; i < params.topk && i < predictions.size(); ++i) {
             printf(" > %s : %.2f\n",
                    model.hparams.id2label.at(predictions[i].second).c_str(),

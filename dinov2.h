@@ -73,7 +73,7 @@ void *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                    const dino_model &model, const dino_params &params);
 
 struct dino_output {
-    std::optional<std::vector<uint32> > preds;
+    std::optional<std::vector<uint32_t> > preds;
     std::optional<std::vector<float> > patch_tokens;
 };
 
