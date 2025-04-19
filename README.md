@@ -116,7 +116,10 @@ uv sync --frozen
 # convert the weights to gguf : vit tiny with patch size of 16 and an image 
 # size of 384 pre-trained on ImageNet21k and fine-tuned on ImageNet1k
 # DINOv2 weights are always fp16
+# without registers
 python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-small-imagenet1k-1-layer --ftype 1
+# with registers
+python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-with-registers-small-imagenet1k-1-layer --ftype 1
 python ./scripts/vit-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_in1k --ftype 1
 
 ```

@@ -20,6 +20,7 @@ struct dino_hparams {
     int32_t num_hidden_layers = 12;
     int32_t num_attention_heads = 12;
     int32_t num_classes = 1000;
+    int32_t num_register_tokens = 0;
     int32_t patch_size = 8;
     int32_t img_size = 224;
     int32_t ftype = 1;
@@ -45,11 +46,6 @@ struct dino_model {
     std::map<std::string, struct ggml_tensor *> tensors;
 };
 
-void *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
-                       const dino_model &model, const dino_hparams &hparams);
-
-void *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
-                   const dino_model &model, const dino_hparams &hparams);
 
 struct image_u8 {
     int nx;
@@ -72,6 +68,12 @@ struct dino_params {
     float eps = 1e-6f; // epsilon used in LN
 };
 
+void *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                       const dino_model &model, const dino_params &params);
+
+void *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                   const dino_model &model, const dino_params &params);
+
 struct dino_output {
     std::optional<std::vector<uint32> > preds;
     std::optional<std::vector<float> > patch_tokens;
@@ -85,7 +87,7 @@ bool load_image_from_file(const std::string &fname, image_u8 &img);
 
 bool dino_image_preprocess(const image_u8 &img, image_f32 &res, const dino_hparams &params);
 
-bool dino_model_load(const std::string &fname, dino_model &model);
+bool dino_model_load(const std::string &fname, dino_model &model, const dino_params &params);
 
 struct ggml_cgraph *build_graph(
     struct ggml_context *ctx_cgraph,

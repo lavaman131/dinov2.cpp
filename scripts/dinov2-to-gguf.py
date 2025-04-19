@@ -41,7 +41,9 @@ def main() -> None:
     model = AutoModelForImageClassification.from_pretrained(args.model_name)
     config = AutoConfig.from_pretrained(args.model_name)
 
-    id2label = config.id2label
+    id2label = {}
+    if hasattr(config, "id2label"):
+        id2label = config.id2label
 
     # Hyperparameters
     hparams = {
@@ -51,25 +53,25 @@ def main() -> None:
         "num_classes": len(id2label),
         "patch_size": config.patch_size,
         "img_size": config.image_size,
-        "ftype": args.ftype,
+        "ftype": args.ftype
     }
-
-    print(hparams)
 
     gguf_writer = GGUFWriter(
         path=fname_out,
         arch="dinov2",
     )
 
-    write_hparams(gguf_writer, hparams)
-
     # Write id2label dictionary to the file
     write_id2label(gguf_writer, id2label)
 
+    num_register_tokens = 0
     # Process and write model weights
     for k, v in model.state_dict().items():
+        k = get_tensor_name(k)
         if should_skip_tensor(k):
             continue
+        elif k == "embeddings.register_tokens":
+            num_register_tokens = v.shape[1]
         print(
             "Processing variable: " + k + " with shape: ",
             v.shape,
@@ -77,6 +79,11 @@ def main() -> None:
             v.dtype,
         )
         save_tensor(gguf_writer, k, v, args.ftype)
+
+    hparams["num_register_tokens"] = num_register_tokens
+
+    print(hparams)
+    write_hparams(gguf_writer, hparams)
 
     gguf_writer.write_header_to_file()
     gguf_writer.write_kv_data_to_file()
@@ -105,8 +112,6 @@ def save_tensor(
         writer: GGUFWriter, name: str, tensor: torch.Tensor, ftype: int
 ) -> None:
     data = tensor.numpy()
-
-    name = get_tensor_name(name)
 
     ftype = (
         1
@@ -137,7 +142,7 @@ def get_tensor_name(name: str) -> str:
 
 
 def should_skip_tensor(name: str) -> bool:
-    return get_tensor_name(name) in {"embeddings.mask_token"} or name.startswith(
+    return name in {"embeddings.mask_token"} or name.startswith(
         "norm_pre"
     )
 
