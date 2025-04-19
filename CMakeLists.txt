@@ -24,10 +24,33 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 # deps
 add_subdirectory(ggml)
 
+#set(OPENCV_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/opencv)
+#
+#include(ExternalProject)
+#ExternalProject_Add(
+#        opencv
+#        GIT_REPOSITORY git@github.com:opencv/opencv.git
+#        GIT_TAG 4.x
+#        CMAKE_ARGS
+#        -DBUILD_PERF_TESTS:BOOL=FALSE
+#        -DBUILD_DOCS:BOOL=FALSE
+#        -DBUILD_EXAMPLES:BOOL=FALSE
+#        -DBUILD_TESTS:BOOL=FALSE
+#        -DBUILD_SHARED_LIBS:BOOL=FALSE
+#        -DBUILD_WITH_DEBUG_INFO=OFF
+#        -DBUILD_PACKAGE:BOOL=OFF
+#        -DCMAKE_BUILD_TYPE:STRING=Release
+#        -DCMAKE_INSTALL_PREFIX:PATH=${OPENCV_INSTALL_DIR}
+#)
+
+#set(OpenCV_DIR ${OPENCV_INSTALL_DIR})
+#find_package(OpenCV REQUIRED core videoio)
+#
+#`
 # dinov2 executable
 add_executable(${PROJECT_NAME} main.cpp dinov2.cpp)
-target_link_libraries(${PROJECT_NAME} PUBLIC ggml)
-target_include_directories(${PROJECT_NAME} PUBLIC .)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} PUBLIC ggml)
+target_include_directories(${PROJECT_NAME} ${OpenCV_INCLUDE_DIRS} PUBLIC .)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
 # quantize executable

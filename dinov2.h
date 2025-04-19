@@ -8,8 +8,6 @@
 #include <vector>
 #include <cinttypes>
 
-#include "../../../../../Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/Security.framework/Versions/A/Headers/cssmconfig.h"
-
 u_int32_t get_val_u32(const struct gguf_context *ctx,
                       const char *key);
 
