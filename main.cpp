@@ -20,6 +20,7 @@
 #include <thread>
 #include <cinttypes>
 #include <algorithm>
+#include <iostream>
 #include <opencv2/imgproc.hpp>
 
 #include "ggml-backend.h"
@@ -55,6 +56,8 @@ int main(int argc, char **argv) {
     }
     fprintf(stderr, "%s: loaded image '%s' (%d x %d)\n", __func__, params.fname_inp.c_str(), img.size[0], img.size[1]);
 
+    int size_original[] = {img.size[0], img.size[1]};
+
     img = dino_image_preprocess(img, model.hparams);
 
     fprintf(stderr, "%s: preprocessed image (%d x %d)\n", __func__, img.size[0], img.size[1]);
@@ -72,60 +75,77 @@ int main(int argc, char **argv) {
         fprintf(stderr, "%s: forward pass time = %8.2lld ms\n", __func__,
                 t_predict_ms);
 
-        // add if statement for if the -c flag was not called
-        // also add timing for PCA section below
-        if (output->patch_tokens.has_value()) {
-            // extract the planar feature vector (CV_32F) from the model output
-            cv::Mat feat_planar = *output->patch_tokens; // size: 1×(3*H*W) or (3*H*W)×1
+        ggml_free(model.ctx);
+        ggml_backend_buffer_free(model.buffer);
+        ggml_backend_free(model.backend);
 
-            // compute total pixels from original image dimensions
-            int rows = img.rows;
-            int cols = img.cols;
-            int total_pixels = rows * cols;
 
-            // reshape to a 2D matrix (total_pixels × 3), 
-            // so each row is one pixel, columns are [R, G, B]
-            cv::Mat feat_reshaped = feat_planar.reshape(1, total_pixels); // may need to do this after pca instead of before
-            // now feat_reshaped is CV_32F, size = total_pixels×3
-
-            // PCA with top 3 principal components
-            cv::PCA pca(feat_reshaped, cv::Mat(), cv::PCA::DATA_AS_ROW, /*maxComponents=*/3);
+        if (!params.classify) {
+            const cv::Mat &patch_tokens = output->patch_tokens.value();
+            cv::PCA pca(patch_tokens, cv::Mat(), cv::PCA::DATA_AS_ROW, 3);
 
             // project original features into the new 3‑D PCA space
             cv::Mat projected;
-            pca.project(feat_reshaped, projected);
+            pca.project(patch_tokens, projected);
             // projected: total_pixels×3, CV_32F
 
-            // normalize each component to [0,255] and reshape back to H×W
-            std::vector<cv::Mat> pcs(3);
-            for (int i = 0; i < 3; ++i) {
-                cv::Mat comp = projected.col(i);     // the i-th PC vector (total_pixels×1)
-                cv::Mat comp_norm;
-				cv::normalize(comp, comp_norm, 0, 255, cv::NORM_MINMAX); // may be unnecessary
-                pcs[i] = comp_norm.reshape(1, rows); // now rows×cols single‑channel
-                pcs[i].convertTo(pcs[i], CV_8U);
+
+            cv::Mat projected_norm;
+            cv::normalize(
+                projected,             
+                projected_norm,        
+                0, 255,             
+                cv::NORM_MINMAX,    
+                CV_8U            
+            );
+
+            int size = model.hparams.n_img_embd();  
+            cv::Mat img = projected_norm.reshape(3, size);
+
+            cv::Size new_size = cv::Size(size_original[1], size_original[0]);
+
+            cv::Mat resized_image;
+            cv::resize(img, resized_image, new_size, 0, 0, cv::INTER_NEAREST);
+
+            const std::string filename = "../../../../pca_visualization.png";
+            if (cv::imwrite(filename, resized_image)) {
+
+                fprintf(stderr, "%s: Saved image to: %s\n", __func__, filename.c_str());
+            }
+            else {
+                fprintf(stderr, "%s: failed to save image to '%s'\n", __func__, filename.c_str());
             }
 
-            // merge into a 3‑channel BGR image
-            // we want PC0→R, PC1→G, PC2→B, but OpenCV is BGR, so:
-            std::vector<cv::Mat> bgr = { pcs[2], pcs[1], pcs[0] };
-            cv::Mat pca_image;
-            cv::merge(bgr, pca_image);
+            cv::imshow("image", resized_image);
+            cv::waitKey(0);
+            cv::destroyAllWindows();
+
+
+
+
+            // normalize each component to [0,255] and reshape back to H×W
+            // std::vector<cv::Mat> pcs(3);
+            // for (int i = 0; i < 3; ++i) {
+            //     cv::Mat comp = projected.col(i); // the i-th PC vector (total_pixels×1)
+            //     cv::Mat comp_norm;
+            //     cv::normalize(comp, comp_norm, 0, 255, cv::NORM_MINMAX); // may be unnecessary
+            //     pcs[i] = comp_norm.reshape(1, rows); // now rows×cols single‑channel
+            //     pcs[i].convertTo(pcs[i], CV_8U);
+            // }
+            //
+            // // merge into a 3‑channel BGR image
+            // // we want PC0→R, PC1→G, PC2→B, but OpenCV is BGR, so:
+            // std::vector<cv::Mat> bgr = {pcs[2], pcs[1], pcs[0]};
+            // cv::Mat pca_image;
+            // cv::merge(bgr, pca_image);
 
             // save frame to disk
-            cv::imwrite("pca_result.png", pca_image);
-            fprintf(stderr, "PCA result saved to 'pca_result.png' (%d×%d)\n",
-                pca_image.cols, pca_image.rows);
-
-        }
-        else {
-            fprintf(stderr, "Warning: no feature map available for PCA\n");
+            // cv::imwrite("pca_result.png", pca_image);
+            // fprintf(stderr, "PCA result saved to 'pca_result.png' (%d×%d)\n",
+            //         pca_image.cols, pca_image.rows);
         }
     }
 
-    ggml_free(model.ctx);
-    ggml_backend_buffer_free(model.buffer);
-    ggml_backend_free(model.backend);
 
     return 0;
 }
