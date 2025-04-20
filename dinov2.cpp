@@ -4,6 +4,8 @@
 #include "ggml.h"
 #include "ggml-cpu.h"
 #include "ggml-alloc.h"
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "ggml/examples/stb_image.h" // stb image load
@@ -101,189 +103,28 @@ static void ggml_disconnect_node_from_graph(ggml_tensor *t) {
     }
 }
 
-// load image from a file(uses stbi_load)
-bool load_image_from_file(const std::string &fname, image_u8 &img) {
-    int nx, ny, nc;
-    auto data = stbi_load(fname.c_str(), &nx, &ny, &nc, 3);
-    if (!data) {
-        fprintf(stderr, "%s: failed to load '%s'\n", __func__, fname.c_str());
-        return false;
+cv::Mat dino_image_preprocess(cv::Mat &img, const dino_hparams &params) {
+    // 1) Convert to float and resize
+    img.convertTo(img, CV_32FC3);
+    cv::resize(img, img,
+               cv::Size(params.img_size, params.img_size),
+               0, 0, cv::INTER_CUBIC);
+
+    // 2) Scale to [0,1]
+    cv::normalize(img, img, 0.0, 1.0, cv::NORM_MINMAX);
+
+    // 3) Channel-wise standardization
+    std::vector<cv::Mat> channels(3);
+    cv::split(img, channels);
+    for (int i = 0; i < 3; ++i) {
+        channels[i] = (channels[i] - IMAGENET_DEFAULT_MEAN[2 - i])
+                      / IMAGENET_DEFAULT_STD[2 - i];
     }
+    cv::merge(channels, img);
 
-    img.nx = nx;
-    img.ny = ny;
-    img.data.resize(nx * ny * 3);
-    memcpy(img.data.data(), data, nx * ny * 3);
-
-    stbi_image_free(data);
-
-    return true;
+    return img;
 }
 
-// preprocess input image : bilinear resize + normalize
-bool dino_image_preprocess_bilinear(const image_u8 &img, image_f32 &res, const dino_hparams &params) {
-    const int nx = img.nx;
-    const int ny = img.ny;
-
-    const int target_size = params.n_img_size();
-
-    res.nx = target_size;
-    res.ny = target_size;
-    res.data.resize(3 * target_size * target_size);
-
-    const float x_scale = nx / (float) target_size;
-    const float y_scale = ny / (float) target_size;
-
-    fprintf(stderr, "%s: x_scale = %f, y_scale = %f\n", __func__, x_scale, y_scale);
-
-    const int nx3 = int(nx / x_scale + 0.5f);
-    const int ny3 = int(ny / y_scale + 0.5f);
-
-    const float m3[3] = {123.675f, 116.280f, 103.530f};
-    const float s3[3] = {58.395f, 57.120f, 57.375f};
-
-    // #pragma omp parallel for schedule(dynamic)
-    for (int y = 0; y < ny3; y++) {
-        for (int x = 0; x < nx3; x++) {
-            for (int c = 0; c < 3; c++) {
-                // linear interpolation
-                const float sx = (x + 0.5f) * x_scale - 0.5f;
-                const float sy = (y + 0.5f) * y_scale - 0.5f;
-
-                const int x0 = std::max(0, (int) std::floor(sx));
-                const int y0 = std::max(0, (int) std::floor(sy));
-
-                const int x1 = std::min(x0 + 1, nx - 1);
-                const int y1 = std::min(y0 + 1, ny - 1);
-
-                const float dx = sx - x0;
-                const float dy = sy - y0;
-
-                const int j00 = 3 * (y0 * nx + x0) + c;
-                const int j01 = 3 * (y0 * nx + x1) + c;
-                const int j10 = 3 * (y1 * nx + x0) + c;
-                const int j11 = 3 * (y1 * nx + x1) + c;
-
-                const float v00 = img.data[j00];
-                const float v01 = img.data[j01];
-                const float v10 = img.data[j10];
-                const float v11 = img.data[j11];
-
-                const float v0 = v00 * (1.0f - dx) + v01 * dx;
-                const float v1 = v10 * (1.0f - dx) + v11 * dx;
-
-                const float v = v0 * (1.0f - dy) + v1 * dy;
-
-                const uint8_t v2 = std::min(std::max(std::round(v), 0.0f), 255.0f);
-
-                const int i = 3 * (y * nx3 + x) + c;
-
-                res.data[i] = (float(v2) - m3[c]) / s3[c];
-            }
-        }
-    }
-    return true;
-}
-
-float clip(float x, float lower, float upper) {
-    return std::max(lower, std::min(x, upper));
-}
-
-// preprocess input image : bicubic resize + normalize
-bool dino_image_preprocess_bicubic(const image_u8 &img, image_f32 &res, const dino_hparams &params) {
-    const int nx = img.nx;
-    const int ny = img.ny;
-
-    const int newWidth = params.n_img_size();
-    const int newHeight = params.n_img_size();
-    res.nx = newWidth;
-    res.ny = newHeight;
-    res.data.resize(3 * newWidth * newHeight);
-
-    int a, b, c, d, index;
-    float Ca, Cb, Cc;
-    float C[5];
-    float d0, d2, d3, a0, a1, a2, a3;
-    int i, j, k, ii, jj;
-    int x, y;
-    float dx, dy;
-    float tx, ty;
-
-    tx = (float) nx / (float) newWidth;
-    ty = (float) ny / (float) newHeight;
-    printf("newWidth, newHeight = %d, %d\n", newWidth, newHeight);
-    printf("tx, ty = %f, %f\n", tx, ty);
-    printf("nx, ny = %d, %d\n", nx, ny);
-
-    float scale = std::max(tx, ty);
-    fprintf(stderr, "%s: scale = %f\n", __func__, scale);
-
-    const float m3[3] = {123.675f, 116.280f, 103.530f};
-    const float s3[3] = {58.395f, 57.120f, 57.375f};
-
-    // Bicubic interpolation; inspired from :
-    //    -> https://github.com/yglukhov/bicubic-interpolation-image-processing/blob/master/libimage.c#L36
-    //    -> https://en.wikipedia.org/wiki/Bicubic_interpolation
-
-    // #pragma omp parallel for schedule(dynamic)
-    for (i = 0; i < newHeight; i++) {
-        for (j = 0; j < newWidth; j++) {
-            x = (int) (tx * j);
-            y = (int) (ty * i);
-
-            dx = tx * j - x;
-            dy = ty * i - y;
-
-            index = (y * nx + x) * 3;
-            a = (y * nx + (x + 1)) * 3;
-            b = ((y + 1) * nx + x) * 3;
-            c = ((y + 1) * nx + (x + 1)) * 3;
-
-            for (k = 0; k < 3; k++) {
-                for (jj = 0; jj <= 3; jj++) {
-                    d0 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x - 1, 0, nx - 1)) * 3 + k] - img.data[
-                             (clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
-                    d2 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x + 1, 0, nx - 1)) * 3 + k] - img.data[
-                             (clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
-                    d3 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x + 2, 0, nx - 1)) * 3 + k] - img.data[
-                             (clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
-                    a0 = img.data[(clip(y - 1 + jj, 0, ny - 1) * nx + clip(x, 0, nx - 1)) * 3 + k];
-
-                    a1 = -1.0 / 3 * d0 + d2 - 1.0 / 6 * d3;
-                    a2 = 1.0 / 2 * d0 + 1.0 / 2 * d2;
-                    a3 = -1.0 / 6 * d0 - 1.0 / 2 * d2 + 1.0 / 6 * d3;
-                    C[jj] = a0 + a1 * dx + a2 * dx * dx + a3 * dx * dx * dx;
-
-                    d0 = C[0] - C[1];
-                    d2 = C[2] - C[1];
-                    d3 = C[3] - C[1];
-                    a0 = C[1];
-                    a1 = -1.0 / 3 * d0 + d2 - 1.0 / 6 * d3;
-                    a2 = 1.0 / 2 * d0 + 1.0 / 2 * d2;
-                    a3 = -1.0 / 6 * d0 - 1.0 / 2 * d2 + 1.0 / 6 * d3;
-                    Cc = a0 + a1 * dy + a2 * dy * dy + a3 * dy * dy * dy;
-
-                    const uint8_t Cc2 = std::min(std::max(std::round(Cc), 0.0f), 255.0f);
-                    res.data[(i * newWidth + j) * 3 + k] = (float(Cc2) - m3[k]) / s3[k];
-                }
-            }
-        }
-    }
-
-    return true;
-}
-
-bool dino_image_preprocess(const image_u8 &img, image_f32 &res, const dino_hparams &params) {
-    const std::string mode = params.interpolation.c_str();
-    if (mode == "bilinear") {
-        return dino_image_preprocess_bilinear(img, res, params);
-    } else if (mode == "bicubic") {
-        return dino_image_preprocess_bicubic(img, res, params);
-    } else {
-        std::cout << "Interpolation mode '" << mode << "' is not supported; returning 'false'...";
-        return false;
-    }
-}
 
 // load the model's weights from a file following the ggml format(gguf)
 bool dino_model_load(const std::string &fname, dino_model &model, const dino_params &params) {
@@ -767,7 +608,7 @@ bool dino_params_parse(int argc, char **argv, dino_params &params) {
     return true;
 }
 
-std::unique_ptr<dino_output> dino_predict(const dino_model &model, const image_f32 &img1,
+std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat &img,
                                           const dino_params &params) {
     struct ggml_init_params params0 = {
         /*.mem_size   =*/ ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead(),
@@ -781,33 +622,32 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const image_f
     ggml_gallocr_alloc_graph(allocr, gf);
 
     struct ggml_tensor *input = ggml_graph_get_tensor(gf, "input");
-    // ggml_backend_tensor_set(input, img1.data.data(), 0, ggml_nbytes(input));
 
-    {
-        float *data = (float *) ggml_get_data(input);
+    std::vector<float> planar(img.total() * 3);
+    float *out = planar.data();
 
-        const int nx = img1.nx;
-        const int ny = img1.ny;
-        const int n = nx * ny;
+    // Split BGR image into channels (OpenCV will do B, G, R)
+    std::vector<cv::Mat> bgr_channels(3);
+    cv::split(img, bgr_channels);
 
-        const int32_t n_img_size = model.hparams.img_size;
+    // Create output Mats for planar format in **RGB order**
+    std::vector<cv::Mat> rgb_planar_channels = {
+        cv::Mat(img.rows, img.cols, CV_32F, out + 0 * img.total()), // R
+        cv::Mat(img.rows, img.cols, CV_32F, out + 1 * img.total()), // G
+        cv::Mat(img.rows, img.cols, CV_32F, out + 2 * img.total()) // B
+    };
 
-        GGML_ASSERT(nx == n_img_size && ny == n_img_size);
+    // Copy from BGR channels into RGB-planar layout
+    bgr_channels[2].copyTo(rgb_planar_channels[0]); // R <- from BGR[2]
+    bgr_channels[1].copyTo(rgb_planar_channels[1]); // G <- from BGR[1]
+    bgr_channels[0].copyTo(rgb_planar_channels[2]); // B <- from BGR[0]
 
-        for (int k = 0; k < 3; k++) {
-            for (int y = 0; y < ny; y++) {
-                for (int x = 0; x < nx; x++) {
-                    data[k * n + y * nx + x] = img1.data[3 * (y * nx + x) + k];
-                }
-            }
-        }
-    }
+    ggml_backend_tensor_set(input, planar.data(), 0, ggml_nbytes(input));
 
     if (ggml_backend_graph_compute(model.backend, gf) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "%s: ggml_backend_graph_compute() failed\n", __func__);
         return {};
     }
-
 
     // print_t_f32("after probs", state.prediction);
     const int num_patches = model.hparams.n_img_embd() * model.hparams.n_img_embd();
@@ -844,8 +684,7 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const image_f
     } else {
         struct ggml_tensor *patches = ggml_graph_get_tensor(gf, "patch_tokens");
         const float *patch_tokens_data = ggml_get_data_f32(patches);
-        std::vector<float> patch_tokens(patch_tokens_data,
-                                        patch_tokens_data + num_patches * model.hparams.hidden_size);
+        cv::Mat patch_tokens(num_patches, model.hparams.hidden_size, CV_32F, const_cast<float *>(patch_tokens_data));
         output->patch_tokens = patch_tokens;
     }
 

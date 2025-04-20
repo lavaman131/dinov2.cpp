@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include <fstream>
@@ -9,6 +10,10 @@
 #include <cinttypes>
 #include <optional>
 #include <memory>
+#include <opencv2/core/mat.hpp>
+
+constexpr float IMAGENET_DEFAULT_MEAN[3] = {0.485f, 0.456f, 0.406f};
+constexpr float IMAGENET_DEFAULT_STD[3] = {0.229f, 0.224f, 0.225f};
 
 uint32_t get_val_u32(const struct gguf_context *ctx,
                      const char *key);
@@ -46,19 +51,6 @@ struct dino_model {
     std::map<std::string, struct ggml_tensor *> tensors;
 };
 
-
-struct image_u8 {
-    int nx;
-    int ny;
-    std::vector<uint8_t> data;
-};
-
-struct image_f32 {
-    int nx;
-    int ny;
-    std::vector<float> data;
-};
-
 struct dino_params {
     uint32_t seed = 42;
     uint32_t topk = 5;
@@ -76,16 +68,14 @@ int *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
 
 struct dino_output {
     std::optional<std::vector<uint32_t> > preds;
-    std::optional<std::vector<float> > patch_tokens;
+    std::optional<cv::Mat> patch_tokens;
 };
 
 void print_t_f32(const char *title, const struct ggml_tensor *t, int n);
 
 static void ggml_disconnect_node_from_graph(ggml_tensor *t);
 
-bool load_image_from_file(const std::string &fname, image_u8 &img);
-
-bool dino_image_preprocess(const image_u8 &img, image_f32 &res, const dino_hparams &params);
+cv::Mat dino_image_preprocess(cv::Mat &img, const dino_hparams &params);
 
 bool dino_model_load(const std::string &fname, dino_model &model, const dino_params &params);
 
@@ -94,7 +84,7 @@ struct ggml_cgraph *build_graph(
     const dino_model &model,
     const dino_params &params);
 
-std::unique_ptr<dino_output> dino_predict(const dino_model &model, const image_f32 &img1,
+std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat &img,
                                           const dino_params &params);
 
 void print_usage(int argc, char **argv, const dino_params &params);
