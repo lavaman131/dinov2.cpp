@@ -1,4 +1,4 @@
-#define CRT_SECURE_NO_DEPRECATE // disables "unsafe" warnings on Windows
+﻿#define CRT_SECURE_NO_DEPRECATE // disables "unsafe" warnings on Windows
 
 #include "dinov2.h"
 #include "ggml.h"
@@ -71,6 +71,56 @@ int main(int argc, char **argv) {
         fprintf(stderr, "\n\n");
         fprintf(stderr, "%s: forward pass time = %8.2lld ms\n", __func__,
                 t_predict_ms);
+
+        // add if statement for if the -c flag was not called
+        // also add timing for PCA section below
+        if (output->patch_tokens.has_value()) {
+            // extract the planar feature vector (CV_32F) from the model output
+            cv::Mat feat_planar = *output->patch_tokens; // size: 1×(3*H*W) or (3*H*W)×1
+
+            // compute total pixels from original image dimensions
+            int rows = img.rows;
+            int cols = img.cols;
+            int total_pixels = rows * cols;
+
+            // reshape to a 2D matrix (total_pixels × 3), 
+            // so each row is one pixel, columns are [R, G, B]
+            cv::Mat feat_reshaped = feat_planar.reshape(1, total_pixels); // may need to do this after pca instead of before
+            // now feat_reshaped is CV_32F, size = total_pixels×3
+
+            // PCA with top 3 principal components
+            cv::PCA pca(feat_reshaped, cv::Mat(), cv::PCA::DATA_AS_ROW, /*maxComponents=*/3);
+
+            // project original features into the new 3‑D PCA space
+            cv::Mat projected;
+            pca.project(feat_reshaped, projected);
+            // projected: total_pixels×3, CV_32F
+
+            // normalize each component to [0,255] and reshape back to H×W
+            std::vector<cv::Mat> pcs(3);
+            for (int i = 0; i < 3; ++i) {
+                cv::Mat comp = projected.col(i);     // the i-th PC vector (total_pixels×1)
+                cv::Mat comp_norm;
+				cv::normalize(comp, comp_norm, 0, 255, cv::NORM_MINMAX); // may be unnecessary
+                pcs[i] = comp_norm.reshape(1, rows); // now rows×cols single‑channel
+                pcs[i].convertTo(pcs[i], CV_8U);
+            }
+
+            // merge into a 3‑channel BGR image
+            // we want PC0→R, PC1→G, PC2→B, but OpenCV is BGR, so:
+            std::vector<cv::Mat> bgr = { pcs[2], pcs[1], pcs[0] };
+            cv::Mat pca_image;
+            cv::merge(bgr, pca_image);
+
+            // save frame to disk
+            cv::imwrite("pca_result.png", pca_image);
+            fprintf(stderr, "PCA result saved to 'pca_result.png' (%d×%d)\n",
+                pca_image.cols, pca_image.rows);
+
+        }
+        else {
+            fprintf(stderr, "Warning: no feature map available for PCA\n");
+        }
     }
 
     ggml_free(model.ctx);
