@@ -289,16 +289,15 @@ int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph
     cur = ggml_concat(ctx_cgraph, model.tensors.at("embeddings.cls_token"), cur, 1);
     cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("embeddings.position_embeddings"));
 
-    struct ggml_tensor *cls_token = ggml_view_1d(ctx_cgraph, cur, hidden_size, 0);
-    struct ggml_tensor *patch_tokens = ggml_view_4d(ctx_cgraph, cur, cur->ne[0], cur->ne[1] - 1,
-                                                    cur->ne[2],
-                                                    cur->ne[3],
-                                                    cur->nb[1],
-                                                    cur->nb[2],
-                                                    cur->nb[3],
-                                                    cur->nb[1]);
-
     if (num_register_tokens > 0) {
+        struct ggml_tensor *cls_token = ggml_view_1d(ctx_cgraph, cur, hidden_size, 0);
+        struct ggml_tensor *patch_tokens = ggml_view_4d(ctx_cgraph, cur, cur->ne[0], cur->ne[1] - 1,
+                                                        cur->ne[2],
+                                                        cur->ne[3],
+                                                        cur->nb[1],
+                                                        cur->nb[2],
+                                                        cur->nb[3],
+                                                        cur->nb[1]);
         cur = ggml_concat(ctx_cgraph, ggml_concat(ctx_cgraph, cls_token,
                                                   model.tensors.at("embeddings.register_tokens"),
                                                   1), patch_tokens, 1);
@@ -463,27 +462,29 @@ int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph
         cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("layernorm.bias"));
     }
 
+    // get the output of cls token at index 0
+    struct ggml_tensor *cls_token = ggml_view_1d(ctx_cgraph, cur, hidden_size, 0);
+
     ggml_set_output(cls_token);
     ggml_set_name(cls_token, "cls_token");
     ggml_build_forward_expand(graph, cls_token);
 
-    int64_t num_skip = 1;
-    if (!params.classify)
-        num_skip += num_register_tokens;
+    int64_t ne1 = cur->ne[1] - 1;
+    size_t offset = cur->nb[1];
+    if (!params.classify) {
+        // include register tokens for classification pooling
+        ne1 -= num_register_tokens;
+        offset *= (num_register_tokens + 1);
+    }
 
-    const int64_t patch_tokens_len = cur->ne[1] - num_skip;
-    const size_t byte_offset = num_skip * cur->nb[1];
-
-    patch_tokens = ggml_view_4d(ctx_cgraph, cur,
-                                cur->ne[0], // hidden_dim
-                                patch_tokens_len, // patch tokens only
-                                cur->ne[2], // batch
-                                cur->ne[3],
-                                cur->nb[1],
-                                cur->nb[2],
-                                cur->nb[3],
-                                byte_offset // actual offset into memory
-    );
+    struct ggml_tensor *patch_tokens = ggml_view_4d(ctx_cgraph, cur, cur->ne[0],
+                                                    ne1,
+                                                    cur->ne[2],
+                                                    cur->ne[3],
+                                                    cur->nb[1],
+                                                    cur->nb[2],
+                                                    cur->nb[3],
+                                                    offset);
 
 
     // std::cout << "patch tokens shape: " << patch_tokens->ne[0] << ", " << patch_tokens->ne[1] << ", "
