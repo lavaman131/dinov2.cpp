@@ -90,24 +90,19 @@ int main(int argc, char **argv) {
             // projected: total_pixels×3, CV_32F
 
 
+    
             cv::Mat projected_norm;
-            cv::normalize(
-                projected,             
-                projected_norm,        
-                0, 255,             
-                cv::NORM_MINMAX,    
-                CV_8U            
-            );
+            cv::normalize(projected, projected_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
 
             int size = model.hparams.n_img_embd();  
-            cv::Mat img = projected_norm.reshape(3, size);
+            cv::Mat image = projected_norm.reshape(3, size);
 
             cv::Size new_size = cv::Size(size_original[1], size_original[0]);
 
             cv::Mat resized_image;
-            cv::resize(img, resized_image, new_size, 0, 0, cv::INTER_NEAREST);
+            cv::resize(image, resized_image, new_size, 0, 0, cv::INTER_NEAREST);
 
-            const std::string filename = "../../../../pca_visualization.png";
+            const std::string filename = params.image_out;
             if (cv::imwrite(filename, resized_image)) {
 
                 fprintf(stderr, "%s: Saved image to: %s\n", __func__, filename.c_str());
