@@ -105,13 +105,10 @@ static void ggml_disconnect_node_from_graph(ggml_tensor *t) {
 
 cv::Mat dino_image_preprocess(cv::Mat &img, const dino_hparams &params) {
     // 1) Convert to float and resize
-    img.convertTo(img, CV_32FC3);
+    img.convertTo(img, CV_32FC3, 1.0 / 255.0);
     cv::resize(img, img,
                cv::Size(params.img_size, params.img_size),
                0, 0, cv::INTER_CUBIC);
-
-    // 2) Scale to [0,1]
-    cv::normalize(img, img, 0.0, 1.0, cv::NORM_MINMAX);
 
     // 3) Channel-wise standardization
     std::vector<cv::Mat> channels(3);
