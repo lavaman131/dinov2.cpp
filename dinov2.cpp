@@ -471,8 +471,8 @@ int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph
     if (!params.classify)
         num_skip += num_register_tokens;
 
-    int64_t patch_tokens_len = cur->ne[1] - num_skip;
-    size_t byte_offset = num_skip * cur->nb[1];
+    const int64_t patch_tokens_len = cur->ne[1] - num_skip;
+    const size_t byte_offset = num_skip * cur->nb[1];
 
     patch_tokens = ggml_view_4d(ctx_cgraph, cur,
                                 cur->ne[0], // hidden_dim
