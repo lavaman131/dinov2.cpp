@@ -229,13 +229,13 @@ bool dino_model_load(const std::string &fname, dino_model &model, const dino_par
 
 int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                       const dino_model &model, const dino_params &params) {
-    const int32_t hidden_size = model.hparams.hidden_size;
-    const int32_t num_hidden_layers = model.hparams.num_hidden_layers;
-    const int32_t num_attention_heads = model.hparams.num_attention_heads;
-    const int32_t n_img_size = model.hparams.img_size;
-    const int32_t n_enc_head_dim = model.hparams.n_enc_head_dim();
-    const int32_t n_img_embd = model.hparams.n_img_embd();
-    const int32_t num_register_tokens = model.hparams.num_register_tokens;
+    const uint32_t hidden_size = model.hparams.hidden_size;
+    const uint32_t num_hidden_layers = model.hparams.num_hidden_layers;
+    const uint32_t num_attention_heads = model.hparams.num_attention_heads;
+    const uint32_t n_img_size = model.hparams.img_size;
+    const uint32_t n_enc_head_dim = model.hparams.n_enc_head_dim();
+    const uint32_t n_img_embd = model.hparams.n_img_embd();
+    const uint32_t num_register_tokens = model.hparams.num_register_tokens;
     // (W, H, C, B)
     // (518, 518, 3, 1)
     struct ggml_tensor *input = ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F32, n_img_size, n_img_size, 3, 1);
