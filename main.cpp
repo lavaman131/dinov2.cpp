@@ -20,6 +20,7 @@
 #include <thread>
 #include <cinttypes>
 #include <algorithm>
+#include <iostream>
 #include <opencv2/imgproc.hpp>
 
 #include "ggml-backend.h"
@@ -67,15 +68,49 @@ int main(int argc, char **argv) {
         const int64_t t_predict_ms = ggml_time_ms() - t_start_ms;
 
         // report timing
-
         fprintf(stderr, "\n\n");
         fprintf(stderr, "%s: forward pass time = %8.2lld ms\n", __func__,
                 t_predict_ms);
+
+        ggml_free(model.ctx);
+        ggml_backend_buffer_free(model.buffer);
+        ggml_backend_free(model.backend);
+
+
+        if (!params.classify) {
+            const cv::Mat &patch_tokens = output->patch_tokens.value();
+            cv::PCA pca(patch_tokens, cv::Mat(), cv::PCA::DATA_AS_ROW, 3);
+
+            // project original features into the new 3‑D PCA space
+            cv::Mat projected;
+            pca.project(patch_tokens, projected);
+            // projected: total_pixels×3, CV_32F
+
+            std::cout << projected.rows << " " << projected.cols << std::endl;
+
+            // normalize each component to [0,255] and reshape back to H×W
+            // std::vector<cv::Mat> pcs(3);
+            // for (int i = 0; i < 3; ++i) {
+            //     cv::Mat comp = projected.col(i); // the i-th PC vector (total_pixels×1)
+            //     cv::Mat comp_norm;
+            //     cv::normalize(comp, comp_norm, 0, 255, cv::NORM_MINMAX); // may be unnecessary
+            //     pcs[i] = comp_norm.reshape(1, rows); // now rows×cols single‑channel
+            //     pcs[i].convertTo(pcs[i], CV_8U);
+            // }
+            //
+            // // merge into a 3‑channel BGR image
+            // // we want PC0→R, PC1→G, PC2→B, but OpenCV is BGR, so:
+            // std::vector<cv::Mat> bgr = {pcs[2], pcs[1], pcs[0]};
+            // cv::Mat pca_image;
+            // cv::merge(bgr, pca_image);
+
+            // save frame to disk
+            // cv::imwrite("pca_result.png", pca_image);
+            // fprintf(stderr, "PCA result saved to 'pca_result.png' (%d×%d)\n",
+            //         pca_image.cols, pca_image.rows);
+        }
     }
 
-    ggml_free(model.ctx);
-    ggml_backend_buffer_free(model.buffer);
-    ggml_backend_free(model.backend);
 
     return 0;
 }
