@@ -35,11 +35,22 @@ add_executable(${PROJECT_NAME} main.cpp dinov2.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
 target_include_directories(${PROJECT_NAME} PUBLIC .)
 
+
+# realtime executable
+option(BUILD_REALTIME "Build the realtime executable" ON)
+
+if (BUILD_REALTIME) 
+    add_executable(realtime realtime.cpp dinov2.cpp)
+    target_link_libraries(realtime PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
+    target_include_directories(realtime PUBLIC .)
+endif ()
+
+
 # quantize executable
 option(BUILD_QUANTIZE "Build the quantization executable" ON)
 
 if (BUILD_QUANTIZE)
-    add_executable(quantize quantize.cpp)
+    add_executable(quantize quantize.cpp )
     target_link_libraries(quantize PUBLIC ggml)
     target_include_directories(quantize PUBLIC .)
 endif ()
