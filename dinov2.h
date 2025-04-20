@@ -57,7 +57,7 @@ struct dino_params {
     bool classify = false;
     std::string model = "../ggml-model-f16.gguf"; // model path
     std::string fname_inp = "../assets/tench.jpg"; // image path
-    std::string image_out = "../../../../pca_visualization.png"; // output of pca visualization (if used)
+    std::string image_out = "pca_visual.png"; // output of pca visualization (if used)
     float eps = 1e-6f; // epsilon used in LN
 };
 
