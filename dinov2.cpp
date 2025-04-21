@@ -1,4 +1,4 @@
-#define CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnigns on Windows
+#define CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnings on Windows
 
 #include "dinov2.h"
 #include "ggml.h"
@@ -103,11 +103,14 @@ static void ggml_disconnect_node_from_graph(ggml_tensor *t) {
     }
 }
 
-cv::Mat dino_image_preprocess(cv::Mat &img, const dino_hparams &params) {
+cv::Mat dino_image_preprocess(cv::Mat &img, const cv::Size img_size, const dino_hparams &params) {
     // 1) Convert to float and resize
     img.convertTo(img, CV_32FC3, 1.0 / 255.0);
+
+    const auto new_size = cv::Size((img.cols / params.patch_size + 1) * params.patch_size,
+                                   (img.rows / params.patch_size + 1) * params.patch_size);
     cv::resize(img, img,
-               cv::Size(params.img_size, params.img_size),
+               new_size,
                0, 0, cv::INTER_CUBIC);
 
     // 3) Channel-wise standardization
@@ -123,8 +126,77 @@ cv::Mat dino_image_preprocess(cv::Mat &img, const dino_hparams &params) {
 }
 
 
+std::vector<float> interpolate_pos_embed(
+    const cv::Size img_size,
+    const float *pos_embed_data, // Input data shouldn't be modified
+    const dino_hparams &hparams) {
+    // --- Calculate New Grid Dimensions ---
+    const int h_new = img_size.height / hparams.patch_size;
+    const int w_new = img_size.width / hparams.patch_size;
+    const int num_patches_new = h_new * w_new;
+
+    // --- Calculate Original Grid Dimensions ---
+    const int M = hparams.n_img_embd(); // Original grid side length
+    const int h_orig = M;
+    const int w_orig = M;
+    const int num_patches_orig = h_orig * w_orig; // N = M*M
+    const int hidden_sz = hparams.hidden_size; // Alias for clarity
+
+    // --- Early Return Check ---
+    if (num_patches_new == num_patches_orig) {
+        const size_t total_elements = (size_t) (num_patches_orig + 1) * hidden_sz;
+        return {pos_embed_data, pos_embed_data + total_elements};
+    }
+
+    // --- Prepare Output Vector ---
+    const size_t total_elements_new = (size_t) (num_patches_new + 1) * hidden_sz;
+    std::vector<float> pos_embed_new(total_elements_new);
+
+    // --- Step 1: Copy CLS token embedding directly ---
+    // The first hidden_sz elements are the CLS token.
+    std::copy(pos_embed_data,
+              pos_embed_data + hidden_sz,
+              pos_embed_new.data());
+
+    // --- Step 2: Interpolate Patch Embeddings (Dimension by Dimension) ---
+    // Although data is [N, H], we process H slices of [N] shaped spatially.
+    for (int c = 0; c < hidden_sz; ++c) {
+        // Create a 2D grid for the *original* patches for the current hidden dimension 'c'.
+        cv::Mat src_grid(h_orig, w_orig, CV_32F);
+
+        // Gather data for the c-th dimension from all original patches.
+        for (int i = 0; i < num_patches_orig; ++i) {
+            const int y_orig = i / w_orig;
+            const int x_orig = i % w_orig;
+
+            // Index for the c-th component of the i-th patch embedding.
+            // (i+1) because the first "row" (index 0) is the CLS token.
+            size_t input_idx = (size_t) (i + 1) * hidden_sz + c;
+            src_grid.at<float>(y_orig, x_orig) = pos_embed_data[input_idx];
+        }
+
+        // Resize the 2D grid for the current dimension.
+        cv::Mat dst_grid;
+        cv::resize(src_grid, dst_grid, cv::Size(w_new, h_new), 0, 0, cv::INTER_CUBIC);
+
+        // Scatter the interpolated data back into the new embedding vector.
+        for (int i = 0; i < num_patches_new; ++i) {
+            const int y_new = i / w_new;
+            const int x_new = i % w_new;
+
+            // Index for the c-th component of the i-th *new* patch embedding.
+            // (i+1) because the first "row" (index 0) is the CLS token.
+            size_t output_idx = (size_t) (i + 1) * hidden_sz + c;
+            pos_embed_new[output_idx] = dst_grid.at<float>(y_new, x_new);
+        }
+    }
+
+    return pos_embed_new;
+}
+
+
 // load the model's weights from a file following the ggml format(gguf)
-bool dino_model_load(const std::string &fname, dino_model &model, const dino_params &params) {
+bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_model &model, const dino_params &params) {
     printf("%s: loading model from '%s' - please wait\n", __func__, fname.c_str());
 #ifdef GGML_USE_CUDA
     fprintf(stderr, "%s: using CUDA backend\n", __func__);
@@ -158,21 +230,71 @@ bool dino_model_load(const std::string &fname, dino_model &model, const dino_par
         return false;
     }
 
-    int num_tensors = gguf_get_n_tensors(gguf_ctx);
+    // load hparams
+    // override defaults
+    auto &hparams = model.hparams;
+    hparams.hidden_size = get_val_u32(gguf_ctx, std::string("hidden_size").c_str());
+    hparams.num_hidden_layers = get_val_u32(gguf_ctx, std::string("num_hidden_layers").c_str());
+    hparams.num_attention_heads = get_val_u32(gguf_ctx, std::string("num_attention_heads").c_str());
+
+    hparams.patch_size = get_val_u32(gguf_ctx, std::string("patch_size").c_str());
+    hparams.img_size = get_val_u32(gguf_ctx, std::string("img_size").c_str());
+    hparams.ftype = get_val_u32(gguf_ctx, std::string("ftype").c_str());
+    hparams.num_register_tokens = get_val_u32(gguf_ctx, std::string("num_register_tokens").c_str());
+
+    const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
+
+    printf("%s: hidden_size            = %d\n", __func__, hparams.hidden_size);
+    printf("%s: num_hidden_layers      = %d\n", __func__, hparams.num_hidden_layers);
+    printf("%s: num_register_tokens    = %d\n", __func__, hparams.num_register_tokens);
+    printf("%s: num_attention_heads    = %d\n", __func__, hparams.num_attention_heads);
+    printf("%s: patch_size             = %d\n", __func__, hparams.patch_size);
+    printf("%s: img_size               = %d\n", __func__, hparams.img_size);
+    printf("%s: ftype                  = %d\n", __func__, hparams.ftype);
+    printf("%s: qntvr                  = %d\n", __func__, qntvr);
+
+    if (params.classify) {
+        hparams.num_classes = get_val_u32(gguf_ctx, std::string("num_classes").c_str());
+        printf("%s: num_classes            = %d\n", __func__, hparams.num_classes);
+        // read id2label dictionary into an ordered map (sort of an OrderedDict)
+        int num_labels = get_val_u32(gguf_ctx, std::string("num_classes").c_str());
+        for (int i = 0; i < num_labels; ++i) {
+            model.hparams.id2label[i] = get_val_str(gguf_ctx, std::to_string(i).c_str());
+        }
+    }
+
+    hparams.ftype %= GGML_QNT_VERSION_FACTOR;
+
+    int num_tensors = gguf_get_n_tensors(gguf_ctx) + 1; // +1 for new_pos_embed
+
+    std::cout << "patch size " << hparams.patch_size << std::endl;
+
+    const auto new_size = cv::Size((img_size.width / model.hparams.patch_size + 1) * model.hparams.patch_size,
+                                   (img_size.height / model.hparams.patch_size + 1) * model.hparams.patch_size);
+
+    const int h0 = new_size.height / hparams.patch_size;
+    const int w0 = new_size.width / hparams.patch_size;
+    const int num_patches = h0 * w0;
+    const int model_num_patches = hparams.n_img_embd() * hparams.n_img_embd();
+
+    const int offset = std::max(num_patches - model_num_patches, 0);
 
     struct ggml_init_params model_params{
-        /*.mem_size   =*/ ggml_tensor_overhead() * num_tensors,
+        /*.mem_size   =*/ ggml_tensor_overhead() * num_tensors + offset,
         /*.mem_buffer =*/ nullptr,
         /*.no_alloc   =*/ true,
     };
     model.ctx = ggml_init(model_params);
-    for (int i = 0; i < num_tensors; i++) {
+    for (int i = 0; i < num_tensors - 1; i++) {
         const char *name = gguf_get_tensor_name(gguf_ctx, i);
         struct ggml_tensor *src = ggml_get_tensor(tmp_ctx, name);
         struct ggml_tensor *dst = ggml_dup_tensor(model.ctx, src);
         ggml_set_name(dst, name);
         model.tensors[name] = dst;
     }
+
+    gguf_free(gguf_ctx);
+
     model.buffer = ggml_backend_alloc_ctx_tensors(model.ctx, model.backend);
     // copy tensors from main memory to backend
     for (struct ggml_tensor *cur = ggml_get_first_tensor(model.ctx); cur != nullptr;
@@ -183,62 +305,24 @@ bool dino_model_load(const std::string &fname, dino_model &model, const dino_par
     }
 
 
-    // load hparams
-    {
-        // override defaults
-        auto &hparams = model.hparams;
-        hparams.hidden_size = get_val_u32(gguf_ctx, std::string("hidden_size").c_str());
-        hparams.num_hidden_layers = get_val_u32(gguf_ctx, std::string("num_hidden_layers").c_str());
-        hparams.num_attention_heads = get_val_u32(gguf_ctx, std::string("num_attention_heads").c_str());
-
-        hparams.patch_size = get_val_u32(gguf_ctx, std::string("patch_size").c_str());
-        hparams.img_size = get_val_u32(gguf_ctx, std::string("img_size").c_str());
-        hparams.ftype = get_val_u32(gguf_ctx, std::string("ftype").c_str());
-        hparams.num_register_tokens = get_val_u32(gguf_ctx, std::string("num_register_tokens").c_str());
-
-        const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
-
-        printf("%s: hidden_size            = %d\n", __func__, hparams.hidden_size);
-        printf("%s: num_hidden_layers      = %d\n", __func__, hparams.num_hidden_layers);
-        printf("%s: num_register_tokens    = %d\n", __func__, hparams.num_register_tokens);
-        printf("%s: num_attention_heads    = %d\n", __func__, hparams.num_attention_heads);
-        printf("%s: patch_size             = %d\n", __func__, hparams.patch_size);
-        printf("%s: img_size               = %d\n", __func__, hparams.img_size);
-        printf("%s: ftype                  = %d\n", __func__, hparams.ftype);
-        printf("%s: qntvr                  = %d\n", __func__, qntvr);
-
-        if (params.classify) {
-            hparams.num_classes = get_val_u32(gguf_ctx, std::string("num_classes").c_str());
-            printf("%s: num_classes            = %d\n", __func__, hparams.num_classes);
-            // read id2label dictionary into an ordered map (sort of an OrderedDict)
-            int num_labels = get_val_u32(gguf_ctx, std::string("num_classes").c_str());
-            for (int i = 0; i < num_labels; ++i) {
-                model.hparams.id2label[i] = get_val_str(gguf_ctx, std::to_string(i).c_str());
-            }
-        }
-
-        hparams.ftype %= GGML_QNT_VERSION_FACTOR;
-    }
-
-    gguf_free(gguf_ctx);
-
     return true;
 }
 
 // DINOv2 Encoder
 
-int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                       const dino_model &model, const dino_params &params) {
     const uint32_t hidden_size = model.hparams.hidden_size;
     const uint32_t num_hidden_layers = model.hparams.num_hidden_layers;
     const uint32_t num_attention_heads = model.hparams.num_attention_heads;
-    const uint32_t n_img_size = model.hparams.img_size;
     const uint32_t n_enc_head_dim = model.hparams.n_enc_head_dim();
-    const uint32_t n_img_embd = model.hparams.n_img_embd();
     const uint32_t num_register_tokens = model.hparams.num_register_tokens;
+    const int h0 = img_size.height / model.hparams.patch_size;
+    const int w0 = img_size.width / model.hparams.patch_size;
+    const int num_patches = h0 * w0;
     // (W, H, C, B)
     // (518, 518, 3, 1)
-    struct ggml_tensor *input = ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F32, n_img_size, n_img_size, 3, 1);
+    struct ggml_tensor *input = ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F32, img_size.width, img_size.height, 3, 1);
     ggml_set_name(input, "input");
 
     // patch embedding
@@ -269,9 +353,12 @@ int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph
     // add positional embedding
     // cur dim     : 768  37  37  1
     // enc.pe dim  : 768  1370  1  1
+
+    std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+            << std::endl;
     //
     // reshape patch embeddings from (768  37  37  1) to (768  1369  1  1)
-    cur = ggml_reshape_4d(ctx_cgraph, cur, hidden_size, n_img_embd * n_img_embd, 1, 1);
+    cur = ggml_reshape_4d(ctx_cgraph, cur, hidden_size, num_patches, 1, 1);
 
     // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
     //         << std::endl;
@@ -286,8 +373,14 @@ int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph
     //         << model.tensors.at("embeddings.register_tokens")->ne[2] << ", "
     //         << model.tensors.at("embeddings.register_tokens")->ne[3] << std::endl;
 
+    struct ggml_tensor *pos_embed_fixed = ggml_new_tensor_3d(ctx_cgraph, GGML_TYPE_F32, model.hparams.hidden_size,
+                                                             num_patches + 1, 1
+    );
+    ggml_set_name(pos_embed_fixed, "pos_embed_fixed");
+
     cur = ggml_concat(ctx_cgraph, model.tensors.at("embeddings.cls_token"), cur, 1);
-    cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("embeddings.position_embeddings"));
+
+    cur = ggml_add_inplace(ctx_cgraph, cur, pos_embed_fixed);
 
     if (num_register_tokens > 0) {
         struct ggml_tensor *cls_token = ggml_view_1d(ctx_cgraph, cur, hidden_size, 0);
@@ -497,7 +590,7 @@ int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph
     return nullptr;
 }
 
-int *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+int *forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                   const dino_model &model, const dino_params &params) {
     const int32_t n_img_embd = model.hparams.n_img_embd();
 
@@ -549,6 +642,7 @@ int *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
 }
 
 struct ggml_cgraph *build_graph(
+    const cv::Size img_size,
     struct ggml_context *ctx_cgraph,
     const dino_model &model,
     const dino_params &params) {
@@ -556,11 +650,10 @@ struct ggml_cgraph *build_graph(
 
     struct ggml_cgraph *gf = ggml_new_graph(ctx_cgraph);
 
-    forward_features(gf, ctx_cgraph, model, params);
+    forward_features(img_size, gf, ctx_cgraph, model, params);
 
     if (params.classify)
-        forward_head(gf, ctx_cgraph, model, params);
-
+        forward_head(img_size, gf, ctx_cgraph, model, params);
 
     return gf;
 }
@@ -617,7 +710,7 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
         /*.no_alloc   =*/ true, // the tensors will be allocated later by ggml_gallocr_alloc_graph()
     };
     struct ggml_context *ctx_cgraph = ggml_init(params0);
-    struct ggml_cgraph *gf = build_graph(ctx_cgraph, model, params);
+    struct ggml_cgraph *gf = build_graph(img.size(), ctx_cgraph, model, params);
 
     ggml_gallocr_t allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
     ggml_gallocr_alloc_graph(allocr, gf);
@@ -645,13 +738,20 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
 
     ggml_backend_tensor_set(input, planar.data(), 0, ggml_nbytes(input));
 
+    const struct ggml_tensor *pos_embed = ggml_get_tensor(model.ctx, "embeddings.position_embeddings");
+
+    const std::vector<float> pos_embed_fixed_data = interpolate_pos_embed(
+        img.size(), ggml_get_data_f32(pos_embed), model.hparams);
+
+    struct ggml_tensor *pos_embed_fixed = ggml_graph_get_tensor(gf, "pos_embed_fixed");
+
+    ggml_backend_tensor_set(pos_embed_fixed, pos_embed_fixed_data.data(), 0, ggml_nbytes(pos_embed_fixed));
+    print_t_f32("pos_embed_fixed", pos_embed_fixed);
+
     if (ggml_backend_graph_compute(model.backend, gf) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "%s: ggml_backend_graph_compute() failed\n", __func__);
         return {};
     }
-
-    // print_t_f32("after probs", state.prediction);
-    const int num_patches = model.hparams.n_img_embd() * model.hparams.n_img_embd();
 
     auto output = std::make_unique<dino_output>();
 
@@ -685,6 +785,9 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
     } else {
         struct ggml_tensor *patches = ggml_graph_get_tensor(gf, "patch_tokens");
         const float *patch_tokens_data = ggml_get_data_f32(patches);
+        const int h0 = img.rows / model.hparams.patch_size;
+        const int w0 = img.cols / model.hparams.patch_size;
+        const int num_patches = h0 * w0;
         // Allocate cv::Mat (which allocates and owns memory)
         cv::Mat patch_tokens(num_patches, model.hparams.hidden_size, CV_32F);
 
