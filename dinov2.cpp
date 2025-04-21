@@ -295,7 +295,7 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
 
     int num_tensors = gguf_get_n_tensors(gguf_ctx) + 1; // +1 for new_pos_embed
 
-    std::cout << "patch size " << hparams.patch_size << std::endl;
+    // std::cout << "patch size " << hparams.patch_size << std::endl;
 
     const auto new_size = cv::Size((img_size.width / model.hparams.patch_size + 1) * model.hparams.patch_size,
                                    (img_size.height / model.hparams.patch_size + 1) * model.hparams.patch_size);
@@ -382,8 +382,8 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
     // cur dim     : 768  37  37  1
     // enc.pe dim  : 768  1370  1  1
 
-    std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-            << std::endl;
+    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+    //         << std::endl;
     //
     // reshape patch embeddings from (768  37  37  1) to (768  1369  1  1)
     cur = ggml_reshape_4d(ctx_cgraph, cur, hidden_size, num_patches, 1, 1);
@@ -774,7 +774,7 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
     struct ggml_tensor *pos_embed_fixed = ggml_graph_get_tensor(gf, "pos_embed_fixed");
 
     ggml_backend_tensor_set(pos_embed_fixed, pos_embed_fixed_data.data(), 0, ggml_nbytes(pos_embed_fixed));
-    print_t_f32("pos_embed_fixed", pos_embed_fixed);
+    // print_t_f32("pos_embed_fixed", pos_embed_fixed);
 
     if (ggml_backend_graph_compute(model.backend, gf) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "%s: ggml_backend_graph_compute() failed\n", __func__);
