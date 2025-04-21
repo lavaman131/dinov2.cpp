@@ -57,13 +57,14 @@ struct dino_params {
     bool classify = false;
     std::string model = "../ggml-model-f16.gguf"; // model path
     std::string fname_inp = "../assets/tench.jpg"; // image path
+    std::string image_out = "pca_visual.png"; // output of pca visualization (if used)
     float eps = 1e-6f; // epsilon used in LN
 };
 
-int *forward_features(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+int *forward_features(cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                       const dino_model &model, const dino_params &params);
 
-int *forward_head(struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+int *forward_head(cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                   const dino_model &model, const dino_params &params);
 
 struct dino_output {
@@ -75,11 +76,19 @@ void print_t_f32(const char *title, const struct ggml_tensor *t, int n);
 
 static void ggml_disconnect_node_from_graph(ggml_tensor *t);
 
-cv::Mat dino_image_preprocess(cv::Mat &img, const dino_hparams &params);
+cv::Mat dino_classify_preprocess(cv::Mat &img, cv::Size img_size, const dino_hparams &params);
 
-bool dino_model_load(const std::string &fname, dino_model &model, const dino_params &params);
+cv::Mat dino_preprocess(cv::Mat &img, cv::Size img_size, const dino_hparams &params);
+
+bool dino_model_load(cv::Size img_size, const std::string &fname, dino_model &model,
+                     const dino_params &params);
+
+std::vector<float> interpolate_pos_embed(cv::Size img_size,
+                                         const float *pos_embed_data,
+                                         const dino_hparams &hparams);
 
 struct ggml_cgraph *build_graph(
+    cv::Size img_size,
     struct ggml_context *ctx_cgraph,
     const dino_model &model,
     const dino_params &params);
