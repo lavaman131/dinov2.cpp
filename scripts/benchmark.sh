@@ -57,7 +57,7 @@ setup_commands() {
 }
 
 # arrays
-declare -a models=("tiny" "small" "base" "large")
+declare -a models=("small" "base" "large" "giant")
 declare -a quant_names=("q4_0" "q4_1" "q5_0" "q5_1" "q8_0")
 declare -a quant_ids=(2 3 6 7 8)
 # associative array
@@ -84,8 +84,9 @@ setup_commands
 
 for model in "${models[@]}"; do
     # convert the model to gguf
-    echo "Converting model: vit_${model}_patch16_224.augreg_in21k_ft_in1k"
-    python ./scripts/vit-to-ggml.py --model_name "vit_${model}_patch16_224.augreg_in21k_ft_in1k" --ftype 1 > /dev/null 2>&1
+    model_name="facebook/dinov2-${model}-imagenet1k-1-layer"
+    echo "Converting model: $model_name"
+    python ./scripts/dinov2-to-gguf.py --model_name "$model_name" --ftype 1 > /dev/null 2>&1
 
     cd build/ || exit
 
@@ -102,7 +103,7 @@ for model in "${models[@]}"; do
 
             for ((i=1; i<=N; i++)); do
                 start=$(get_time)
-                measure_cmd "./bin/dinov2" $num_threads "../ggml-model-f16-quant.gguf" "../assets/tench.jpg"
+                measure_cmd "./bin/dinov2 -c -m ../ggml-model-f16.gguf -i ../assets/tench.jpg"
                 end=$(get_time)
                 diff=$((end-start))
                 sum=$((sum+diff))
@@ -125,7 +126,7 @@ for model in "${models[@]}"; do
 
         for ((i=1; i<=N; i++)); do
             start=$(get_time)
-            measure_cmd "./bin/dinov2" $num_threads "../ggml-model-f16.gguf" "../assets/tench.jpg"
+            measure_cmd "./bin/dinov2 -c -m ../ggml-model-f16.gguf -i ../assets/tench.jpg"
             end=$(get_time)
             diff=$((end-start))
             sum=$((sum+diff))

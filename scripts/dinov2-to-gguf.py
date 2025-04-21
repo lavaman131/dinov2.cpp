@@ -37,12 +37,11 @@ def main() -> None:
     fname_out = f"./ggml-model-{DATA_TYPES[args.ftype]}.gguf"
 
     # Load the pretrained model
-    # model = AutoModel.from_pretrained(args.model_name)
-    model = AutoModelForImageClassification.from_pretrained(args.model_name)
+    model = AutoModel.from_pretrained(args.model_name)
     config = AutoConfig.from_pretrained(args.model_name)
 
     id2label = {}
-    if hasattr(config, "id2label"):
+    if "imagenet" in args.model_name:
         id2label = config.id2label
 
     # Hyperparameters

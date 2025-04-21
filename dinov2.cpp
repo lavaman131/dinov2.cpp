@@ -338,12 +338,152 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
 
 // DINOv2 Encoder
 
+struct ggml_tensor *attn(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph,
+                         const dino_model &model, const dino_params &params) {
+    const uint32_t num_attention_heads = model.hparams.num_attention_heads;
+    const uint32_t n_enc_head_dim = model.hparams.n_enc_head_dim();
+    const uint32_t hidden_size = model.hparams.hidden_size;
+    const int64_t W = cur->ne[1];
+    const int64_t H = cur->ne[2];
+
+    // self-attention
+
+    struct ggml_tensor *Q;
+    struct ggml_tensor *K;
+    struct ggml_tensor *V;
+
+
+    Q = ggml_mul_mat(
+        ctx_cgraph,
+        model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.attention.query.weight"),
+        cur); // 768, 1370, 1, 1
+    Q = ggml_add_inplace(ctx_cgraph, Q,
+                         model.tensors.at(
+                             "encoder.layer." + std::to_string(il) + ".attention.attention.query.bias"));
+    Q = ggml_reshape_4d(ctx_cgraph, Q, n_enc_head_dim, num_attention_heads, W * H, 1);
+    Q = ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, Q, 0, 2, 1, 3));
+    Q = ggml_reshape_3d(ctx_cgraph, Q, n_enc_head_dim, W * H, num_attention_heads);
+
+    K = ggml_mul_mat(
+        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.attention.key.weight"),
+        cur); // 768, 1370, 1, 1
+    K = ggml_add_inplace(ctx_cgraph, K,
+                         model.tensors.at(
+                             "encoder.layer." + std::to_string(il) + ".attention.attention.key.bias"));
+    K = ggml_reshape_4d(ctx_cgraph, K, n_enc_head_dim, num_attention_heads, W * H, 1);
+    K = ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, K, 0, 2, 1, 3));
+    K = ggml_reshape_3d(ctx_cgraph, K, n_enc_head_dim, W * H, num_attention_heads);
+
+    V = ggml_mul_mat(
+        ctx_cgraph,
+        model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.attention.value.weight"),
+        cur); // 768, 1370, 1, 1
+    V = ggml_add_inplace(ctx_cgraph, V,
+                         model.tensors.at(
+                             "encoder.layer." + std::to_string(il) + ".attention.attention.value.bias"));
+    V = ggml_reshape_4d(ctx_cgraph, V, n_enc_head_dim, num_attention_heads, W * H, 1);
+    V = ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, V, 1, 2, 0, 3)); // transposed
+    V = ggml_reshape_3d(ctx_cgraph, V, W * H, n_enc_head_dim, num_attention_heads);
+
+    struct ggml_tensor *KQ = ggml_mul_mat(ctx_cgraph, K, Q);
+
+    // attention weights
+    struct ggml_tensor *KQ_scaled =
+            ggml_scale_inplace(ctx_cgraph,
+                               KQ,
+                               1.0f / sqrtf(static_cast<float>(n_enc_head_dim)));
+
+    struct ggml_tensor *KQ_soft_max = ggml_soft_max_inplace(ctx_cgraph, KQ_scaled);
+
+    struct ggml_tensor *KQV = ggml_mul_mat(ctx_cgraph, V, KQ_soft_max);
+
+    cur =
+            ggml_reshape_4d(ctx_cgraph,
+                            ggml_cont(ctx_cgraph,
+                                      ggml_permute(ctx_cgraph,
+                                                   ggml_reshape_4d(
+                                                       ctx_cgraph, KQV, n_enc_head_dim, W * H,
+                                                       num_attention_heads,
+                                                       1),
+                                                   0, 2, 1, 3)),
+                            hidden_size, W, H, 1);
+
+    cur = ggml_mul_mat(
+        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.output.dense.weight"),
+        cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at(
+                               "encoder.layer." + std::to_string(il) + ".attention.output.dense.bias"));
+
+    return cur;
+}
+
+struct ggml_tensor *mlp(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph, const dino_model &model,
+                        const dino_params &params) {
+    // fully connected layer
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight"),
+                       cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.bias"));
+
+    // GELU activation
+    cur = ggml_gelu(ctx_cgraph, cur);
+
+    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+    //         << std::endl;
+
+    // projection
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.weight"),
+                       cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.bias"));
+    return cur;
+}
+
+struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph,
+                               const dino_model &model,
+                               const dino_params &params) {
+    // fully connected layer
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_in.weight"),
+                       cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_in.bias"));
+
+    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+    //         << std::endl;
+
+    int64_t ne0 = cur->ne[0] / 2;
+    int64_t ne1 = cur->ne[1];
+    int64_t ne2 = cur->ne[2];
+    int64_t ne3 = cur->ne[3];
+    size_t nb0 = cur->nb[0];
+    size_t nb1 = cur->nb[1];
+    size_t nb2 = cur->nb[2];
+    size_t nb3 = cur->nb[3];
+    size_t offset = nb0 * ne0;
+
+    struct ggml_tensor *cur1 = ggml_view_4d(ctx_cgraph, cur, ne0, ne1, ne2, ne3,
+                                            nb1, nb2, nb3, 0);
+
+    struct ggml_tensor *cur2 = ggml_view_4d(ctx_cgraph, cur, ne0, ne1, ne2, ne3,
+                                            nb1, nb2, nb3, offset);
+
+    // SILU activation
+    cur = ggml_mul_inplace(ctx_cgraph, ggml_silu(ctx_cgraph, cur1), cur2);
+
+    // projection
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.weight"),
+                       cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.bias"));
+    return cur;
+}
+
 int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                       const dino_model &model, const dino_params &params) {
     const uint32_t hidden_size = model.hparams.hidden_size;
     const uint32_t num_hidden_layers = model.hparams.num_hidden_layers;
-    const uint32_t num_attention_heads = model.hparams.num_attention_heads;
-    const uint32_t n_enc_head_dim = model.hparams.n_enc_head_dim();
+
     const uint32_t num_register_tokens = model.hparams.num_register_tokens;
     const int h0 = img_size.height / model.hparams.patch_size;
     const int w0 = img_size.width / model.hparams.patch_size;
@@ -450,82 +590,13 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
 
         // std::cout << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3] << std::endl;
 
-        const int64_t W = cur->ne[1];
-        const int64_t H = cur->ne[2];
+        // self attn
+        cur = attn(cur, il, ctx_cgraph, model, params);
 
-        // self-attention
-        {
-            struct ggml_tensor *Q;
-            struct ggml_tensor *K;
-            struct ggml_tensor *V;
-
-
-            Q = ggml_mul_mat(
-                ctx_cgraph,
-                model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.attention.query.weight"),
-                cur); // 768, 1370, 1, 1
-            Q = ggml_add_inplace(ctx_cgraph, Q,
-                                 model.tensors.at(
-                                     "encoder.layer." + std::to_string(il) + ".attention.attention.query.bias"));
-            Q = ggml_reshape_4d(ctx_cgraph, Q, n_enc_head_dim, num_attention_heads, W * H, 1);
-            Q = ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, Q, 0, 2, 1, 3));
-            Q = ggml_reshape_3d(ctx_cgraph, Q, n_enc_head_dim, W * H, num_attention_heads);
-
-            K = ggml_mul_mat(
-                ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.attention.key.weight"),
-                cur); // 768, 1370, 1, 1
-            K = ggml_add_inplace(ctx_cgraph, K,
-                                 model.tensors.at(
-                                     "encoder.layer." + std::to_string(il) + ".attention.attention.key.bias"));
-            K = ggml_reshape_4d(ctx_cgraph, K, n_enc_head_dim, num_attention_heads, W * H, 1);
-            K = ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, K, 0, 2, 1, 3));
-            K = ggml_reshape_3d(ctx_cgraph, K, n_enc_head_dim, W * H, num_attention_heads);
-
-            V = ggml_mul_mat(
-                ctx_cgraph,
-                model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.attention.value.weight"),
-                cur); // 768, 1370, 1, 1
-            V = ggml_add_inplace(ctx_cgraph, V,
-                                 model.tensors.at(
-                                     "encoder.layer." + std::to_string(il) + ".attention.attention.value.bias"));
-            V = ggml_reshape_4d(ctx_cgraph, V, n_enc_head_dim, num_attention_heads, W * H, 1);
-            V = ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, V, 1, 2, 0, 3)); // transposed
-            V = ggml_reshape_3d(ctx_cgraph, V, W * H, n_enc_head_dim, num_attention_heads);
-
-            struct ggml_tensor *KQ = ggml_mul_mat(ctx_cgraph, K, Q);
-
-            // attention weights
-            struct ggml_tensor *KQ_scaled =
-                    ggml_scale_inplace(ctx_cgraph,
-                                       KQ,
-                                       1.0f / sqrtf(n_enc_head_dim));
-
-            struct ggml_tensor *KQ_soft_max = ggml_soft_max_inplace(ctx_cgraph, KQ_scaled);
-
-            struct ggml_tensor *KQV = ggml_mul_mat(ctx_cgraph, V, KQ_soft_max);
-
-            cur =
-                    ggml_reshape_4d(ctx_cgraph,
-                                    ggml_cont(ctx_cgraph,
-                                              ggml_permute(ctx_cgraph,
-                                                           ggml_reshape_4d(
-                                                               ctx_cgraph, KQV, n_enc_head_dim, W * H,
-                                                               num_attention_heads,
-                                                               1),
-                                                           0, 2, 1, 3)),
-                                    hidden_size, W, H, 1);
-
-            cur = ggml_mul_mat(
-                ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.output.dense.weight"),
-                cur);
-            cur = ggml_add_inplace(ctx_cgraph, cur,
-                                   model.tensors.at(
-                                       "encoder.layer." + std::to_string(il) + ".attention.output.dense.bias"));
-            cur = ggml_mul_inplace(ctx_cgraph, cur,
-                                   model.tensors.at(
-                                       "encoder.layer." + std::to_string(il) +
-                                       ".layer_scale1.lambda1"));
-        }
+        cur = ggml_mul_inplace(ctx_cgraph, cur,
+                               model.tensors.at(
+                                   "encoder.layer." + std::to_string(il) +
+                                   ".layer_scale1.lambda1"));
 
         // add skip connection
         cur = ggml_add_inplace(ctx_cgraph, cur, inpL);
@@ -545,20 +616,19 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
                                        model.tensors.at("encoder.layer." + std::to_string(il) + ".norm2.bias"));
             }
 
-            // fully connected layer
-            cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight"),
-                               cur);
-            cur = ggml_add_inplace(ctx_cgraph, cur,
-                                   model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.bias"));
+            // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+            //         << std::endl;
+            //
+            // std::cout << "mlp.fc1 size " << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")
+            //         ->ne[0] << ", "
+            //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[1] << ", "
+            //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[2] << ", "
+            //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[3] << std::endl;
 
-            // GELU activation
-            cur = ggml_gelu(ctx_cgraph, cur);
-
-            // projection
-            cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.weight"),
-                               cur);
-            cur = ggml_add_inplace(ctx_cgraph, cur,
-                                   model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.bias"));
+            if (model.hparams.num_hidden_layers == 40)
+                cur = swiglu_ffn(cur, il, ctx_cgraph, model, params);
+            else
+                cur = mlp(cur, il, ctx_cgraph, model, params);
             cur = ggml_mul_inplace(ctx_cgraph, cur,
                                    model.tensors.
                                    at("encoder.layer." + std::to_string(il) + ".layer_scale2.lambda1"));

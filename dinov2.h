@@ -61,6 +61,15 @@ struct dino_params {
     float eps = 1e-6f; // epsilon used in LN
 };
 
+struct ggml_tensor *attn(struct ggml_tensor *cur, int il, struct ggml_context *ctx_cgraph,
+                         const dino_model &model, const dino_params &params);
+
+struct ggml_tensor *mlp(struct ggml_tensor *cur, int il, struct ggml_context *ctx_cgraph,
+                        const dino_model &model, const dino_params &params);
+
+struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, int il, struct ggml_context *ctx_cgraph,
+                               const dino_model &model, const dino_params &params);
+
 int *forward_features(cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                       const dino_model &model, const dino_params &params);
 

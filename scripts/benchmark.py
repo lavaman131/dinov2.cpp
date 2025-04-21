@@ -64,13 +64,13 @@ def benchmark_model(
 
     for _ in range(n):
         # Measure peak memory usage
-        peak_memory_usage = memory_usage(
-            (predict, (inputs, model)),
-            interval=0.01,
-            max_usage=True,
-            include_children=True,
-        )
-        peak_memory_usages.append(peak_memory_usage)
+        # peak_memory_usage = memory_usage(
+        #     (predict, (inputs, model)),
+        #     interval=0.01,
+        #     max_usage=True,
+        #     include_children=True,
+        # )
+        # peak_memory_usages.append(peak_memory_usage)
 
         start_time = time.perf_counter_ns()
         predict(inputs, model)
@@ -88,9 +88,9 @@ def main() -> None:
     # model variants
     model_variants = {
         "small": "facebook/dinov2-small-imagenet1k-1-layer",
-        # "base": "facebook/dinov2-base-imagenet1k-1-layer",
-        # "large": "facebook/dinov2-large-imagenet1k-1-layer",
-        # "giant": "facebook/dinov2-giant-imagenet1k-1-layer",
+        "base": "facebook/dinov2-base-imagenet1k-1-layer",
+        "large": "facebook/dinov2-large-imagenet1k-1-layer",
+        "giant": "facebook/dinov2-giant-imagenet1k-1-layer",
     }
 
     # an image
