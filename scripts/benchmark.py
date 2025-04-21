@@ -2,7 +2,6 @@ import time
 from typing import Tuple, Final, Sequence, Dict, Any, Union
 import torch
 from torchvision.transforms import v2
-from memory_profiler import memory_usage
 from PIL import Image
 from threadpoolctl import threadpool_limits
 from transformers import AutoImageProcessor, AutoModelForImageClassification
@@ -94,16 +93,15 @@ def main() -> None:
 
     # an image
     image_path = "./assets/tench.jpg"
-    device = "mps"
+    device = "cpu"
     n = 100
 
-    with threadpool_limits(limits=4):
-        print("| Model | Speed (ms)   |   Mem (MB)       |")
-        print("|-------|--------------|------------------|")
+    print("| Model | Speed (ms)   |   Mem (MB)       |")
+    print("|-------|--------------|------------------|")
 
-        for name, model_name in model_variants.items():
-            avg_time, peak_memory = benchmark_model(image_path, model_name, n, device)
-            print(f"| {name} | {avg_time:.0f} | {peak_memory:.0f} |")
+    for name, model_name in model_variants.items():
+        avg_time, peak_memory = benchmark_model(image_path, model_name, n, device)
+        print(f"| {name} | {avg_time:.0f} | {peak_memory:.0f} |")
 
 
 if __name__ == "__main__":
