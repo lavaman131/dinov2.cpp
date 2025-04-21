@@ -1,6 +1,6 @@
 import argparse
 import struct
-from typing import Dict, BinaryIO
+from typing import Dict, BinaryIO, Final
 import numpy as np
 import torch
 from transformers import AutoModel, AutoConfig, AutoModelForImageClassification
@@ -31,18 +31,24 @@ def get_args() -> argparse.Namespace:
     return args
 
 
+ARCH: Final[str] = "dinov2"
+
+
 def main() -> None:
     args = get_args()
     # Output file name
     fname_out = f"./ggml-model-{DATA_TYPES[args.ftype]}.gguf"
 
-    # Load the pretrained model
-    model = AutoModel.from_pretrained(args.model_name)
-    config = AutoConfig.from_pretrained(args.model_name)
+    is_classifier = "imagenet" in args.model_name
 
+    # Load the pretrained model
     id2label = {}
-    if "imagenet" in args.model_name:
+    config = AutoConfig.from_pretrained(args.model_name)
+    if is_classifier:
+        model = AutoModelForImageClassification.from_pretrained(args.model_name)
         id2label = config.id2label
+    else:
+        model = AutoModel.from_pretrained(args.model_name)
 
     # Hyperparameters
     hparams = {
@@ -57,7 +63,7 @@ def main() -> None:
 
     gguf_writer = GGUFWriter(
         path=fname_out,
-        arch="dinov2",
+        arch=ARCH,
     )
 
     # Write id2label dictionary to the file
@@ -135,7 +141,7 @@ def save_tensor(
 
 
 def get_tensor_name(name: str) -> str:
-    if name.startswith("dinov2"):
+    if name.startswith(ARCH):
         name = ".".join(name.split(".")[1:])
     return name
 

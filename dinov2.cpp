@@ -708,7 +708,8 @@ int *forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggm
 
     struct ggml_tensor *pooled_patch_tokens = ggml_sum_rows(
         ctx_cgraph, ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, patch_tokens, 1, 0, 2, 3)));
-    pooled_patch_tokens = ggml_scale_inplace(ctx_cgraph, pooled_patch_tokens, 1.0f / (n_img_embd * n_img_embd));
+    pooled_patch_tokens = ggml_scale_inplace(ctx_cgraph, pooled_patch_tokens,
+                                             1.0f / static_cast<float>(n_img_embd * n_img_embd));
 
     struct ggml_tensor *cur = ggml_concat(ctx_cgraph, cls_token, ggml_permute(
                                               ctx_cgraph, pooled_patch_tokens, 1,
