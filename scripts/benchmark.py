@@ -47,8 +47,7 @@ def make_classification_eval_transform(
 @torch.inference_mode
 def predict(inputs: Dict[str, Any], model: nn.Module) -> torch.Tensor:
     logits = model(**inputs).logits
-    probabilities = F.softmax(logits, dim=-1)
-    return probabilities
+    return logits
 
 
 def benchmark_model(
