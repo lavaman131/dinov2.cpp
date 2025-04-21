@@ -103,7 +103,35 @@ static void ggml_disconnect_node_from_graph(ggml_tensor *t) {
     }
 }
 
-cv::Mat dino_image_preprocess(cv::Mat &img, const cv::Size img_size, const dino_hparams &params) {
+cv::Mat dino_classify_preprocess(cv::Mat &img, const cv::Size img_size, const dino_hparams &params) {
+    // 1) Convert to float and resize
+    img.convertTo(img, CV_32FC3, 1.0 / 255.0);
+
+    const auto new_size = cv::Size(256, 256);
+    cv::resize(img, img,
+               new_size,
+               0, 0, cv::INTER_CUBIC);
+
+    constexpr int crop_size = 224;
+    const int offset_w = (img.cols - crop_size) / 2;
+    const int offset_h = (img.rows - crop_size) / 2;
+    const cv::Rect roi(offset_w, offset_h, crop_size, crop_size);
+    img = img(roi);
+
+    // 3) Channel-wise standardization
+    std::vector<cv::Mat> channels(3);
+    cv::split(img, channels);
+    for (int i = 0; i < 3; ++i) {
+        channels[i] = (channels[i] - IMAGENET_DEFAULT_MEAN[2 - i])
+                      / IMAGENET_DEFAULT_STD[2 - i];
+    }
+    cv::merge(channels, img);
+
+    return img;
+}
+
+
+cv::Mat dino_preprocess(cv::Mat &img, const cv::Size img_size, const dino_hparams &params) {
     // 1) Convert to float and resize
     img.convertTo(img, CV_32FC3, 1.0 / 255.0);
 

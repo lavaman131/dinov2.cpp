@@ -76,7 +76,9 @@ void print_t_f32(const char *title, const struct ggml_tensor *t, int n);
 
 static void ggml_disconnect_node_from_graph(ggml_tensor *t);
 
-cv::Mat dino_image_preprocess(cv::Mat &img, cv::Size img_size, const dino_hparams &params);
+cv::Mat dino_classify_preprocess(cv::Mat &img, cv::Size img_size, const dino_hparams &params);
+
+cv::Mat dino_preprocess(cv::Mat &img, cv::Size img_size, const dino_hparams &params);
 
 bool dino_model_load(cv::Size img_size, const std::string &fname, dino_model &model,
                      const dino_params &params);

@@ -56,8 +56,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-
-    img = dino_image_preprocess(img, img.size(), model.hparams);
+    if (params.classify)
+        img = dino_classify_preprocess(img, img.size(), model.hparams);
+    else
+        img = dino_preprocess(img, img.size(), model.hparams);
 
     cv::Size original_size = img.size();
 
