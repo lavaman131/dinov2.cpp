@@ -48,14 +48,22 @@ def predict(inputs: Dict[str, Any], model: nn.Module) -> torch.Tensor:
     logits = model(**inputs).logits
     return logits
 
+    # Use appropriate synchronization
+
+
+def sync(device: torch.device) -> None:
+    if device.type == "cuda" or device.type == "mps":
+        torch.cuda.synchronize() if device.type == "cuda" else torch.mps.synchronize()
+
 
 def benchmark_model(
-        image_path: str, model_name: str, n: int, device: str
+        image_path: str, model_name: str, n: int, device: torch.device
 ) -> Tuple[float, float]:
     times = []
     peak_memory_usages = []
 
     model = AutoModelForImageClassification.from_pretrained(model_name, device_map=device)
+    model.eval()
     preprocess = make_classification_eval_transform()
     with Image.open(image_path).convert("RGB") as image:
         inputs = dict(pixel_values=preprocess(image).to(device, non_blocking=True).unsqueeze_(0))
@@ -69,9 +77,10 @@ def benchmark_model(
         #     include_children=True,
         # )
         # peak_memory_usages.append(peak_memory_usage)
-
+        sync(device)
         start_time = time.perf_counter_ns()
         predict(inputs, model)
+        sync(device)
         end_time = time.perf_counter_ns()
 
         time_taken = end_time - start_time
@@ -93,7 +102,7 @@ def main() -> None:
 
     # an image
     image_path = "./assets/tench.jpg"
-    device = "cpu"
+    device = torch.device("mps")
     n = 100
 
     print("| Model | Speed (ms)   |   Mem (MB)       |")
