@@ -56,20 +56,20 @@ def benchmark_model(
     times = []
     peak_memory_usages = []
 
-    model = AutoModelForImageClassification.from_pretrained(model_name)
+    model = AutoModelForImageClassification.from_pretrained(model_name, device_map=device)
     preprocess = make_classification_eval_transform()
     with Image.open(image_path).convert("RGB") as image:
         inputs = dict(pixel_values=preprocess(image).to(device, non_blocking=True).unsqueeze_(0))
 
     for _ in range(n):
         # Measure peak memory usage
-        peak_memory_usage = memory_usage(
-            (predict, (inputs, model)),
-            interval=0.01,
-            max_usage=True,
-            include_children=True,
-        )
-        peak_memory_usages.append(peak_memory_usage)
+        # peak_memory_usage = memory_usage(
+        #     (predict, (inputs, model)),
+        #     interval=0.01,
+        #     max_usage=True,
+        #     include_children=True,
+        # )
+        # peak_memory_usages.append(peak_memory_usage)
 
         start_time = time.perf_counter_ns()
         predict(inputs, model)
@@ -94,8 +94,8 @@ def main() -> None:
 
     # an image
     image_path = "./assets/tench.jpg"
-    device = "cpu"
-    n = 10
+    device = "mps"
+    n = 100
 
     with threadpool_limits(limits=4):
         print("| Model | Speed (ms)   |   Mem (MB)       |")

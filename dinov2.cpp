@@ -469,7 +469,7 @@ struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggm
                                             nb1, nb2, nb3, offset);
 
     // SILU activation
-    cur = ggml_mul_inplace(ctx_cgraph, ggml_silu(ctx_cgraph, cur1), cur2);
+    cur = ggml_mul_inplace(ctx_cgraph, ggml_silu(ctx_cgraph, ggml_cont(ctx_cgraph, cur1)), cur2);
 
     // projection
     cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.weight"),
@@ -638,11 +638,6 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
     }
 
     cur = inpL;
-
-    //
-    // pooling
-    //
-
 
     // layer normalization
     {

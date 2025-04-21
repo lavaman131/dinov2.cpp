@@ -57,7 +57,7 @@ setup_commands() {
 }
 
 # arrays
-declare -a models=("small" "base" "large" "giant")
+declare -a models=("small" "base" "large")
 declare -a quant_names=("q4_0" "q4_1" "q5_0" "q5_1" "q8_0")
 declare -a quant_ids=(2 3 6 7 8)
 # associative array
