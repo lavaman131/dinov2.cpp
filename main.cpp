@@ -1,4 +1,4 @@
-﻿#define CRT_SECURE_NO_DEPRECATE // disables "unsafe" warnings on Windows
+#define CRT_SECURE_NO_DEPRECATE // disables "unsafe" warnings on Windows
 
 #include "dinov2.h"
 #include "ggml.h"
