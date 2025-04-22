@@ -49,8 +49,8 @@ int main(int argc, char **argv) {
 
     // int width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
     // int height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-    int width = 854, height = 480;
-
+    // int width = 854, height = 480;
+    int width = 480, height = 240;
 
     auto size = cv::Size(width, height);
 
