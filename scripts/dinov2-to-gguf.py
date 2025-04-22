@@ -34,6 +34,7 @@ def get_args() -> argparse.Namespace:
 ARCH: Final[str] = "dinov2"
 
 
+@torch.no_grad()
 def main() -> None:
     args = get_args()
     # Output file name
@@ -84,6 +85,35 @@ def main() -> None:
             v.dtype,
         )
         save_tensor(gguf_writer, k, v, args.ftype)
+
+    for i, layer in enumerate(model.dinov2.encoder.layer):
+        base_name = f"encoder.layer.{i}.attention.attention"
+
+        q = layer.attention.attention.query.weight
+        k = layer.attention.attention.key.weight
+        v = layer.attention.attention.value.weight
+        qkv = torch.cat([q, k, v], dim=0)
+        name = base_name + ".qkv.weight"
+        print(
+            "Processing variable: " + name + " with shape: ",
+            qkv.shape,
+            " and type: ",
+            qkv.dtype,
+        )
+        save_tensor(gguf_writer, name, qkv, args.ftype)
+
+        q = layer.attention.attention.query.bias
+        k = layer.attention.attention.key.bias
+        v = layer.attention.attention.value.bias
+        qkv = torch.cat([q, k, v], dim=0)
+        name = base_name + ".qkv.bias"
+        print(
+            "Processing variable: " + name + " with shape: ",
+            qkv.shape,
+            " and type: ",
+            qkv.dtype,
+        )
+        save_tensor(gguf_writer, name, qkv, args.ftype)
 
     hparams["num_register_tokens"] = num_register_tokens
 
@@ -149,7 +179,7 @@ def get_tensor_name(name: str) -> str:
 def should_skip_tensor(name: str) -> bool:
     return name in {"embeddings.mask_token"} or name.startswith(
         "norm_pre"
-    )
+    ) or "attention.attention" in name
 
 
 if __name__ == "__main__":

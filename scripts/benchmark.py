@@ -107,7 +107,6 @@ def main() -> None:
 
     print("| Model | Speed (ms)   |   Mem (MB)       |")
     print("|-------|--------------|------------------|")
-
     for name, model_name in model_variants.items():
         avg_time, peak_memory = benchmark_model(image_path, model_name, n, device)
         print(f"| {name} | {avg_time:.0f} | {peak_memory:.0f} |")
