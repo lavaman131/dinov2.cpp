@@ -86,7 +86,12 @@ def main() -> None:
         )
         save_tensor(gguf_writer, k, v, args.ftype)
 
-    for i, layer in enumerate(model.dinov2.encoder.layer):
+    if num_register_tokens > 0:
+        layers = model.dinov2_with_registers.encoder.layer
+    else:
+        layers = model.dinov2.encoder.layer
+
+    for i, layer in enumerate(layers):
         base_name = f"encoder.layer.{i}.attention.attention"
 
         q = layer.attention.attention.query.weight
