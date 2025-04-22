@@ -54,8 +54,6 @@ The implemented architecture is based on the DINOv2 architecture:
 
 ## Quick example
 
-Todo: 
-
 <details>
 
 
@@ -65,7 +63,7 @@ Todo:
   </p>
 
   <p align="center">
-    <img src="assets/pca_visual_.jpg" alt="PCA output" width="50%" height="auto">
+    <img src="assets/pca_visual.jpg" alt="PCA output" width="50%" height="auto">
   </p>
 
   <summary>See output</summary>
