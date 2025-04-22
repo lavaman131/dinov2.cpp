@@ -464,7 +464,7 @@ struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggm
     return cur;
 }
 
-int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                       const dino_model &model, const dino_params &params) {
     const uint32_t hidden_size = model.hparams.hidden_size;
     const uint32_t num_hidden_layers = model.hparams.num_hidden_layers;
@@ -485,19 +485,11 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
     // std::cout << "patch embed " << enc.patch_embed_w->ne[0] << std::endl;
     struct ggml_tensor *cur = ggml_conv_2d_sk_p0(
         ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.weight"), input);
-    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3] <<
-    //         std::endl;
-    // std::cout << "enc patch embed shape " << enc.patch_embed_w->ne[0] << ", " << enc.patch_embed_w->ne[1] << ", " << enc
-    //         .patch_embed_w->
-    //         ne[2] << ", " << enc.patch_embed_w->ne[3] << std::endl;
+
     cur = ggml_add_inplace(ctx_cgraph,
                            cur,
                            ggml_repeat(ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.bias"),
                                        cur)); // (37, 37, 768, 1)
-
-    // std::cout << "shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3] << std::endl;
-    // (37, 37, 768, 1)
-
     cur = ggml_cont(ctx_cgraph,
                     ggml_permute(ctx_cgraph, cur, 1, 2, 0, 3)); // (37, 768, 37, 1)
     //
@@ -514,19 +506,6 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
     //
     // reshape patch embeddings from (768  37  37  1) to (768  1369  1  1)
     cur = ggml_reshape_4d(ctx_cgraph, cur, hidden_size, num_patches, 1, 1);
-
-    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-    //         << std::endl;
-    //
-    // concat class embeddings(cls_token) : (768  1  1  1) with positional embeddings (pos_embed = cur) : (768  1369  1  1)
-    //
-    // std::cout << "cls_token shape " << cur2->ne[0] << ", " << cur2->ne[1] << ", " << cur2->ne[2] << ", " << cur2->ne[3]
-    //         << std::endl;
-
-    // std::cout << "embeddings.register_tokens shape " << model.tensors.at("embeddings.register_tokens")->ne[0] << ", "
-    //         << model.tensors.at("embeddings.register_tokens")->ne[1] << ", "
-    //         << model.tensors.at("embeddings.register_tokens")->ne[2] << ", "
-    //         << model.tensors.at("embeddings.register_tokens")->ne[3] << std::endl;
 
     struct ggml_tensor *pos_embed_fixed = ggml_new_tensor_3d(ctx_cgraph, GGML_TYPE_F32, model.hparams.hidden_size,
                                                              num_patches + 1, 1
@@ -551,16 +530,6 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
                                                   1), patch_tokens, 1);
     }
 
-
-    // cur = ggml_permute(ctx_cgraph, cur,
-    //                    0, 2, 1, 3); // 768  1370  1  1
-
-    // std::cout << "cur shape" << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-    //         << std::endl;
-    //
-    // std::cout << "pos embed shape" << model.tensors.at("embeddings.embeddings.projection.weight")->ne[0];
-
-
     struct ggml_tensor *inpL = cur;
     //
     // loop over layers
@@ -570,7 +539,8 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
             cur = ggml_norm(ctx_cgraph, inpL, model.hparams.eps);
 
             // cur = w * cur + b
-            cur = ggml_mul(ctx_cgraph, cur, model.tensors.at("encoder.layer." + std::to_string(il) + ".norm1.weight"));
+            cur = ggml_mul_inplace(ctx_cgraph, cur,
+                                   model.tensors.at("encoder.layer." + std::to_string(il) + ".norm1.weight"));
             cur = ggml_add_inplace(ctx_cgraph, cur,
                                    model.tensors.at("encoder.layer." + std::to_string(il) + ".norm1.bias"));
         }
@@ -597,8 +567,8 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
                 cur = ggml_norm(ctx_cgraph, inpFF, model.hparams.eps);
 
                 // cur = w * cur + b
-                cur = ggml_mul(ctx_cgraph, cur,
-                               model.tensors.at("encoder.layer." + std::to_string(il) + ".norm2.weight"));
+                cur = ggml_mul_inplace(ctx_cgraph, cur,
+                                       model.tensors.at("encoder.layer." + std::to_string(il) + ".norm2.weight"));
                 cur = ggml_add_inplace(ctx_cgraph, cur,
                                        model.tensors.at("encoder.layer." + std::to_string(il) + ".norm2.bias"));
             }
@@ -621,17 +591,17 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
                                    at("encoder.layer." + std::to_string(il) + ".layer_scale2.lambda1"));
         }
         //
-        inpL = ggml_add(ctx_cgraph, cur, inpFF);
+        inpL = ggml_add_inplace(ctx_cgraph, cur, inpFF);
     }
 
     cur = inpL;
 
     // layer normalization
     {
-        cur = ggml_norm(ctx_cgraph, cur, model.hparams.eps);
+        cur = ggml_norm_inplace(ctx_cgraph, cur, model.hparams.eps);
 
         // cur = w * cur + b
-        cur = ggml_mul(ctx_cgraph, cur, model.tensors.at("layernorm.weight"));
+        cur = ggml_mul_inplace(ctx_cgraph, cur, model.tensors.at("layernorm.weight"));
         cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("layernorm.bias"));
     }
 
@@ -659,34 +629,18 @@ int *forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
                                                     cur->nb[3],
                                                     offset);
 
-
-    // std::cout << "patch tokens shape: " << patch_tokens->ne[0] << ", " << patch_tokens->ne[1] << ", "
-    //         << patch_tokens->ne[2] << ", " << patch_tokens->ne[3] << std::endl;
-
     ggml_set_output(patch_tokens);
     ggml_set_name(patch_tokens, "patch_tokens");
     ggml_build_forward_expand(graph, patch_tokens);
-
-    return nullptr;
 }
 
-int *forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+void forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                   const dino_model &model, const dino_params &params) {
     const int32_t n_img_embd = model.hparams.n_img_embd();
 
     struct ggml_tensor *cls_token = ggml_graph_get_tensor(graph, "cls_token");
     struct ggml_tensor *patch_tokens = ggml_graph_get_tensor(graph, "patch_tokens");
     // classification head
-
-
-    // patch_tokens = ggml_cont(ctx0, ggml_permute(ctx0, patch_tokens, 1, 0, 2, 3));
-
-    // std::cout << "cls tokens: " << cls_token->ne[0] << ", " << cls_token->ne[1] << ", " << cls_token->ne[2] << ", " <<
-    //         cls_token->ne[3]
-    //         << std::endl;
-    // std::cout << "patch tokens shape " << patch_tokens->ne[0] << ", " << patch_tokens->ne[1] << ", " << patch_tokens->ne
-    //         [2] << ", "
-    //         << patch_tokens->ne[3] << std::endl;
 
     struct ggml_tensor *pooled_patch_tokens = ggml_sum_rows(
         ctx_cgraph, ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, patch_tokens, 1, 0, 2, 3)));
@@ -698,28 +652,17 @@ int *forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggm
                                               0, 2,
                                               3), 0);
 
-
-    // std::cout << "cls_token shape " << cls_token->ne[0] << ", " << cls_token->ne[1] << ", " << cls_token->ne[2] << ", "
-    //         << cls_token->ne[3] << std::endl;
-    // std::cout << "patch_tokens shape " << patch_tokens->ne[0] << ", " << patch_tokens->ne[1] << ", " << patch_tokens->ne
-    //         [2]
-    //         << ", " << patch_tokens->ne[3] << std::endl;
-    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3] <<
-    //         std::endl;
-
     // projection
     cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("classifier.weight"), cur);
     cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("classifier.bias"));
 
     // softmax
-    ggml_tensor *probs = ggml_soft_max(ctx_cgraph, cur);
+    ggml_tensor *probs = ggml_soft_max_inplace(ctx_cgraph, cur);
     //
     ggml_set_output(probs);
     ggml_set_name(probs, "probs");
 
     ggml_build_forward_expand(graph, probs);
-
-    return nullptr;
 }
 
 struct ggml_cgraph *build_graph(

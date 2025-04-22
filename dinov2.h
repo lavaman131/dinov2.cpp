@@ -72,10 +72,10 @@ struct ggml_tensor *mlp(struct ggml_tensor *cur, int il, struct ggml_context *ct
 struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, int il, struct ggml_context *ctx_cgraph,
                                const dino_model &model, const dino_params &params);
 
-int *forward_features(cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+void forward_features(cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                       const dino_model &model, const dino_params &params);
 
-int *forward_head(cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+void forward_head(cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
                   const dino_model &model, const dino_params &params);
 
 struct dino_output {
