@@ -3,7 +3,7 @@ project(dinov2
         DESCRIPTION "Inference Vision Transformer (ViT) in plain C/C++ with ggml"
         HOMEPAGE_URL "https://github.com/staghado/vit.cpp")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
