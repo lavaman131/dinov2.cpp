@@ -10,6 +10,7 @@
 #include <cinttypes>
 #include <optional>
 #include <memory>
+#include <thread>
 #include <opencv2/core/mat.hpp>
 
 constexpr float IMAGENET_DEFAULT_MEAN[3] = {0.485f, 0.456f, 0.406f};
@@ -54,6 +55,7 @@ struct dino_model {
 struct dino_params {
     uint32_t seed = 42;
     uint32_t topk = 5;
+    uint32_t n_threads = std::min(4u, std::thread::hardware_concurrency());;
     bool classify = false;
     std::string model = "../ggml-model-f16.gguf"; // model path
     std::string fname_inp = "../assets/tench.jpg"; // image path

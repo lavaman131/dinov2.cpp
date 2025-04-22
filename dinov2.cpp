@@ -245,6 +245,7 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
     // if there aren't GPU Backends fallback to CPU backend
     if (!model.backend) {
         model.backend = ggml_backend_cpu_init();
+        ggml_backend_cpu_set_n_threads(model.backend, params.n_threads);
     }
 
     struct ggml_context *tmp_ctx = nullptr;
@@ -755,6 +756,8 @@ void print_usage(int argc, char **argv, const dino_params &params) {
     fprintf(stderr, "  -m FNAME, --model       model path (default: %s)\n", params.model.c_str());
     fprintf(stderr, "  -i FNAME, --inp         input file (default: %s)\n", params.fname_inp.c_str());
     fprintf(stderr, "  -k N, --topk            top k classes to print (default: %d)\n", params.topk);
+    fprintf(stderr, "  -t N, --threads         number of threads to use during computation (default: %d)\n",
+            params.n_threads);
     fprintf(stderr, "  -c, --classify          whether to classify the image or get backbone features (default: %d)\n",
             params.classify);
     fprintf(stderr, "  -s SEED, --seed         RNG seed (default: -1)\n");
@@ -772,6 +775,8 @@ bool dino_params_parse(int argc, char **argv, dino_params &params) {
             params.model = argv[++i];
         } else if (arg == "-i" || arg == "--inp") {
             params.fname_inp = argv[++i];
+        } else if (arg == "-t" || arg == "--threads") {
+            params.n_threads = std::stoi(argv[++i]);
         } else if (arg == "-k" || arg == "--topk") {
             params.topk = std::stoi(argv[++i]);
         } else if (arg == "-e" || arg == "--epsilon") {

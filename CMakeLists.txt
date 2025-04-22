@@ -30,6 +30,11 @@ add_subdirectory(ggml)
 # via the command line or GUI
 find_package(OpenCV REQUIRED)
 
+if (NOT OpenCV_FOUND)
+    message(FATAL_ERROR "OpenCV not found. Please set OpenCV_DIR to the directory containing OpenCVConfig.cmake.")
+endif ()
+
+
 # dinov2 executable
 add_executable(${PROJECT_NAME} main.cpp dinov2.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS} PUBLIC ggml)

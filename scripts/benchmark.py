@@ -95,14 +95,14 @@ def main() -> None:
     # model variants
     model_variants = {
         "small": "facebook/dinov2-small-imagenet1k-1-layer",
-        "base": "facebook/dinov2-base-imagenet1k-1-layer",
-        "large": "facebook/dinov2-large-imagenet1k-1-layer",
-        "giant": "facebook/dinov2-giant-imagenet1k-1-layer",
+        # "base": "facebook/dinov2-base-imagenet1k-1-layer",
+        # "large": "facebook/dinov2-large-imagenet1k-1-layer",
+        # "giant": "facebook/dinov2-giant-imagenet1k-1-layer",
     }
 
     # an image
     image_path = "./assets/tench.jpg"
-    device = torch.device("mps")
+    device = torch.device("cpu")
     n = 100
 
     print("| Model | Speed (ms)   |   Mem (MB)       |")
