@@ -22,7 +22,7 @@ setup_commands() {
 
         measure_cmd() {
             local full_cmd="$1"
-            /usr/bin/time -f "%M" -o mem.txt \
+            gtime -f "%M" -o mem.txt \
                 $full_cmd > /dev/null 2>&1
         }
 
