@@ -98,10 +98,6 @@ int main(int argc, char **argv) {
             } else {
                 fprintf(stderr, "%s: failed to save image to '%s'\n", __func__, filename.c_str());
             }
-
-            cv::imshow("image", resized_image);
-            cv::waitKey(0);
-            cv::destroyAllWindows();
         }
     }
 

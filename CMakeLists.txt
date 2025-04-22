@@ -48,13 +48,3 @@ if (BUILD_REALTIME)
     target_link_libraries(realtime PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
     target_include_directories(realtime PUBLIC .)
 endif ()
-
-
-# quantize executable
-option(BUILD_QUANTIZE "Build the quantization executable" ON)
-
-if (BUILD_QUANTIZE)
-    add_executable(quantize quantize.cpp)
-    target_link_libraries(quantize PUBLIC ggml)
-    target_include_directories(quantize PUBLIC .)
-endif ()
