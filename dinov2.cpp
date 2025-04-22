@@ -657,7 +657,7 @@ void forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggm
     cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("classifier.bias"));
 
     // softmax
-    ggml_tensor *probs = ggml_soft_max_inplace(ctx_cgraph, cur);
+    ggml_tensor *probs = ggml_soft_max(ctx_cgraph, cur);
     //
     ggml_set_output(probs);
     ggml_set_name(probs, "probs");
