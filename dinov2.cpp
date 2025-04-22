@@ -382,25 +382,16 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
     struct ggml_tensor *KQ = ggml_mul_mat(ctx_cgraph, K, Q);
 
     // attention weights
-    struct ggml_tensor *KQ_scaled =
-            ggml_scale_inplace(ctx_cgraph,
-                               KQ,
-                               scale);
-
-    struct ggml_tensor *KQ_soft_max = ggml_soft_max_inplace(ctx_cgraph, KQ_scaled);
+    struct ggml_tensor *KQ_soft_max = ggml_soft_max_ext(ctx_cgraph, KQ, nullptr, scale, 0.0f);
 
     struct ggml_tensor *KQV = ggml_mul_mat(ctx_cgraph, V, KQ_soft_max);
 
-    cur =
-            ggml_reshape_4d(ctx_cgraph,
-                            ggml_cont(ctx_cgraph,
-                                      ggml_permute(ctx_cgraph,
-                                                   ggml_reshape_4d(
-                                                       ctx_cgraph, KQV, n_enc_head_dim, W * H,
-                                                       num_attention_heads,
-                                                       1),
-                                                   0, 2, 1, 3)),
-                            hidden_size, W, H, 1);
+    cur = ggml_reshape_4d(ctx_cgraph,
+                          ggml_cont(ctx_cgraph,
+                                    ggml_permute(ctx_cgraph,
+                                                 KQV,
+                                                 0, 2, 1, 3)),
+                          hidden_size, W, H, 1);
 
     cur = ggml_mul_mat(
         ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.output.dense.weight"),
