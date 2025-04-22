@@ -92,7 +92,7 @@ for model in "${models[@]}"; do
 
             for ((run=1; run<=N; run++)); do
                 start=$(get_time)
-                measure_cmd "./bin/dinov2 -c -m ../ggml-model-f16-quant.gguf -i ../assets/tench.jpg"
+                measure_cmd "./bin/dinov2 -c -m ../ggml-model-f16-quant.gguf -i ../assets/tench.jpg -t $num_threads"
                 end=$(get_time)
                 diff=$((end - start))
                 sum=$((sum + diff))
