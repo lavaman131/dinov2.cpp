@@ -663,6 +663,9 @@ void forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggm
     ggml_set_name(probs, "probs");
 
     ggml_build_forward_expand(graph, probs);
+
+
+
 }
 
 struct ggml_cgraph *build_graph(
@@ -689,6 +692,7 @@ void print_usage(int argc, char **argv, const dino_params &params) {
     fprintf(stderr, "  -h, --help              show this help message and exit\n");
     fprintf(stderr, "  -m FNAME, --model       model path (default: %s)\n", params.model.c_str());
     fprintf(stderr, "  -i FNAME, --inp         input file (default: %s)\n", params.fname_inp.c_str());
+    fprintf(stderr, "  -o FNAME, --out         output file path (default: %s)\n", params.image_out.c_str());
     fprintf(stderr, "  -k N, --topk            top k classes to print (default: %d)\n", params.topk);
     fprintf(stderr, "  -t N, --threads         number of threads to use during computation (default: %d)\n",
             params.n_threads);
@@ -696,7 +700,6 @@ void print_usage(int argc, char **argv, const dino_params &params) {
             params.classify);
     fprintf(stderr, "  -s SEED, --seed         RNG seed (default: -1)\n");
     fprintf(stderr, "  -e FLOAT, --epsilon     epsilon constant in Layer Norm layers (default: %f)\n", params.eps);
-    fprintf(stderr, "\n");
 }
 
 bool dino_params_parse(int argc, char **argv, dino_params &params) {
@@ -709,6 +712,8 @@ bool dino_params_parse(int argc, char **argv, dino_params &params) {
             params.model = argv[++i];
         } else if (arg == "-i" || arg == "--inp") {
             params.fname_inp = argv[++i];
+        } else if (arg == "-o" || arg == "--out") {
+            params.image_out = argv[++i];
         } else if (arg == "-t" || arg == "--threads") {
             params.n_threads = std::stoi(argv[++i]);
         } else if (arg == "-k" || arg == "--topk") {

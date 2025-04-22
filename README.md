@@ -1,14 +1,16 @@
 # dinov2.cpp
 
-Inference Vision Transformer (ViT) in plain C/C++ using ggml without any extra dependencies
+DINOv2 pretrained visual models in C/C++ using ggml and OpenCV.
 
 ## Description
 
-This project presents a standalone implementation of the well known Vision Transformer (ViT) model family, used in a
-broad spectrum of applications and SOTA models like Large Multimodal Models(LMM). The primary goal is to develop a C/C++
-inference engine tailored for ViT models, utilizing [ggml](https://github.com/ggerganov/ggml) to enhance performance,
-particularly on edge devices. Designed to be both lightweight and self-contained, this implementation can be run across
-diverse platforms.
+This project provides an implementation of the DINOv2 family of models in C++. These foundation models have been pretrained
+for image-level and pixel-level visual tasks, and provide a broad range of possible applications in image analysis. We aim 
+to provide all the functionalities available in the [pytorch implementation](https://github.com/facebookresearch/dinov2) in C++.
+This lightweight version of DINOv2 is intended to reduce inference time and required memory, using [ggml](https://github.com/ggerganov/ggml)
+and [OpenCV](https://github.com/opencv/opencv), particularly for use on edge devices. This implementation was heavily inspired by and built on 
+existing code from [vit.cpp](https://github.com/staghado/vit.cpp).
+
 
 <details>
 <summary>Table of Contents</summary>
@@ -16,7 +18,7 @@ diverse platforms.
 - [dinov2.cpp](#dinov2cpp)
     - [Description](#description)
     - [Features](#features)
-    - [Vision Transformer architecture](#vision-transformer-architecture)
+    - [DINOv2 Overview](#dinov2-overview)
     - [Quick example](#quick-example)
     - [Convert PyTorch to GGUF](#convert-pytorch-to-gguf)
     - [Build](#build)
@@ -31,70 +33,66 @@ diverse platforms.
     - [Quantization](#quantization)
         - [Results](#results)
     - [To-Do List](#to-do-list)
-    - [Star History](#star-history)
 
 </details>
 
 ## Features
 
 - Dependency-free and lightweight inference thanks to [ggml](https://github.com/ggerganov/ggml).
+- Support for DINO models from huggingface with conversion from pytorch weights to gguf.
+
+
+Todo:
 - 4-bit, 5-bit and 8-bit quantization support.
-- Support for timm ViTs with different variants out of the box.
 
-An important aspect of using `vit.cpp` is that it has short startup times compared to common DL frameworks, which makes
-it suitable for serverless deployments where the cold start is an issue.
 
-## Vision Transformer architecture
+## DINOv2 Overview: 
 
-The implemented architecture is based on the original Vision Transformer from:
+The implemented architecture is based on the DINOv2 architecture:
 
-- [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)
-
-<p align="center">
-  <img src="assets/image.png" alt="Vision Transformer overview" width="60%" height="auto">
-</p>
-<p align="center">
-  ViT architecture. Taken from the <a href="https://arxiv.org/abs/2010.11929">original paper</a>.
-</p>
+- [DINOv2: Learning Robust Visual Features without Supervision](https://arxiv.org/abs/2304.07193)
 
 ## Quick example
 
+Todo: 
+
 <details>
+
+
+
   <p align="center">
-    <img src="assets/magpie.jpeg" alt="example input" width="50%" height="auto">
+    <img src="assets/tench.jpg" alt="example input" width="50%" height="auto">
+  </p>
+
+  <p align="center">
+    <img src="assets/pca_visual_.jpg" alt="PCA output" width="50%" height="auto">
   </p>
 
   <summary>See output</summary>
   <pre>
-  $ ./bin/vit -t 4 -m ../ggml-model-f16.gguf -i ../assets/magpie.jpeg -k 5
-  main: seed = 1701176263
-  main: n_threads = 4 / 8
-  vit_model_load: loading model from &apos;../ggml-model-f16.gguf&apos; - please wait
-  vit_model_load: hidden_size            = 192
-  vit_model_load: num_hidden_layers      = 12
-  vit_model_load: num_attention_heads    = 3
-  vit_model_load: patch_size             = 16
-  vit_model_load: img_size               = 224
-  vit_model_load: num_classes            = 1000
-  vit_model_load: ftype                  = 1
-  vit_model_load: qntvr                  = 0
-  operator(): ggml ctx size =  11.13 MB
-  vit_model_load: ................... done
-  vit_model_load: model size =    11.04 MB / num tensors = 152
-  main: loaded image &apos;../assets/magpie.jpeg&apos; (500 x 470)
-  vit_image_preprocess: scale = 2.232143
-  processed, out dims : (224 x 224)
+  $ ./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg 
+  main: seed = 42
+  main: loaded image '../assets/tench.jpg' (408 x 612)
+  dino_model_load: loading model from '../ggml-model-f16.gguf' - please wait
+  dino_model_load: hidden_size            = 384
+  dino_model_load: num_hidden_layers      = 12
+  dino_model_load: num_register_tokens    = 4
+  dino_model_load: num_attention_heads    = 6
+  dino_model_load: patch_size             = 14
+  dino_model_load: img_size               = 518
+  dino_model_load: ftype                  = 1
+  dino_model_load: qntvr                  = 0
+  dino_model_load: num_classes            = 1000
+  main: preprocessed image (224 x 224)
 
 
-&gt; magpie : 0.87
-&gt; goose : 0.02
-&gt; toucan : 0.01
-&gt; drake : 0.01
-&gt; king penguin, Aptenodytes patagonica : 0.01
+&gt; tench, Tinca tinca : 0.90
+&gt; coho, cohoe, coho salmon, blue jack, silver salmon, Oncorhynchus kisutch : 0.05
+&gt; goldfish, Carassius auratus : 0.01
+&gt; suit, suit of clothes : 0.01
+&gt; barracouta, snoek : 0.00
 
-main:    model load time = 17.92 ms
-main:    processing time = 146.96 ms
-main:    total time = 164.88 ms
+main: graph computation took 349 ms
   </pre>
 </details>
 
@@ -205,9 +203,13 @@ options:
 First experiments on Apple M1 show inference speedups(up to 6x faster for base model) compared to native PyTorch
 inference.
 
-### ViT inference
+### EINOv2 inference
 
-You can efficiently run ViT inference on the CPU.
+You can efficiently run DINO inference on the CPU.
+
+Todo: 
+Update benchmarks
+
 Memory requirements and inference speed on AMD Ryzen 7 3700U(4 cores, 8 threads) for both native PyTorch and `vit.cpp`.
 Using 4 threads gives better results for my machine. The reported results of inference speed correspond to 10 runs
 averages for both PyTorch and `vit.cpp`.
@@ -245,6 +247,9 @@ Both scripts use 4 threads by default. In Python, the `threadpoolctl` library is
 used by PyTorch.
 
 ## Quantization
+
+Todo:
+Quantization is not currently supported for dinov2.cpp
 
 `vit.cpp` supports many quantization strategies from ggml such as q4_0, q4_1, q5_0, q5_1 and q8_0 types.
 You can quantize a model in F32 (the patch embedding is in F16) to one of these types by using the `./bin/quantize`
@@ -295,17 +300,9 @@ For accurate estimation of run times, these benchmarks were run 100 times each.
 | large |     q5_1     |  2547 ms   |  235 MB  |
 | large |     q8_0     |  1994 ms   |  325 MB  |
 
-## To-Do List
 
-- **Evaluate performance on ImageNet1k**:
 
-  Run evaluation on ImageNet1k test set and analyze the performance of different quantization schemes.
+This project was built on and highly inspired by vit.cpp:
 
-This project was highly inspired by the following projects:
+* [vit.cpp](https://github.com/staghado/vit.cpp)
 
-* [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
-* [llama.cpp](https://github.com/ggerganov/llama.cpp)
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=staghado/vit.cpp&type=Date)](https://star-history.com/#staghado/vit.cpp&Date)
