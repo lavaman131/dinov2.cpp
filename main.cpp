@@ -69,8 +69,10 @@ int main(int argc, char **argv) {
     // prepare for graph computation, memory allocation and results processing
     {
         // run prediction on img
+        ggml_backend_synchronize(model.backend);
         const int64_t t_start_ms = ggml_time_ms();
         std::unique_ptr<dino_output> output = dino_predict(model, img, params);
+        ggml_backend_synchronize(model.backend);
         const int64_t t_predict_ms = ggml_time_ms() - t_start_ms;
 
         // report timing
