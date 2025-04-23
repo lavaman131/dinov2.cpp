@@ -55,6 +55,7 @@ struct dino_model {
 struct dino_params {
     uint32_t seed = 42;
     uint32_t topk = 5;
+    bool enable_flash_attn = false;
     uint32_t n_threads = std::min(4u, std::thread::hardware_concurrency());;
     bool classify = false;
     std::string model = "../ggml-model-f16.gguf"; // model path

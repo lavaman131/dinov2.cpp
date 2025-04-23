@@ -49,8 +49,8 @@ int main(int argc, char **argv) {
 
     // int width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
     // int height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-    // int width = 854, height = 480;
-    int width = 480, height = 240;
+    int width = 854, height = 480;
+    // int width = 480, height = 240;
 
     auto size = cv::Size(width, height);
 
@@ -79,7 +79,12 @@ int main(int argc, char **argv) {
         frame = dino_preprocess(frame, size, model.hparams);
 
         // output from model
+        ggml_backend_synchronize(model.backend);
+        int64_t start_time = ggml_time_ms();
         std::unique_ptr<dino_output> output = dino_predict(model, frame, params);
+        ggml_backend_synchronize(model.backend);
+        int64_t end_time = ggml_time_ms();
+        fprintf(stderr, "%s: graph computation took %lld ms\n", __func__, end_time - start_time);
 
 
         // pca conversion
