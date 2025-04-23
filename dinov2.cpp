@@ -8,12 +8,9 @@
 #include <opencv2/imgproc.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "ggml/examples/stb_image.h" // stb image load
 #include <cassert>
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
-#include <cstring>
 #include <fstream>
 #include <map>
 #include <string>
@@ -381,13 +378,16 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
         const int64_t total_patches_padding = GGML_PAD(total_patches, 32);
         const int64_t total_patches_to_pad = total_patches_padding - total_patches;
 
+        const int64_t hidden_size_padding = GGML_PAD(hidden_size, 4);
+        const int64_t hidden_size_to_pad = hidden_size_padding - hidden_size;
+
         V = ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, V, 0, 2, 1, 3));
 
-        Q = ggml_pad(ctx_cgraph, Q, 0, total_patches_to_pad, 0, 0);
+        Q = ggml_pad(ctx_cgraph, Q, hidden_size_to_pad, total_patches_to_pad, 0, 0);
 
-        K = ggml_pad(ctx_cgraph, K, 0, total_patches_to_pad, 0, 0);
+        K = ggml_pad(ctx_cgraph, K, hidden_size_to_pad, total_patches_to_pad, 0, 0);
 
-        V = ggml_pad(ctx_cgraph, V, 0, total_patches_to_pad, 0, 0);
+        V = ggml_pad(ctx_cgraph, V, hidden_size_to_pad, total_patches_to_pad, 0, 0);
 
         K = ggml_cpy(ctx_cgraph, K,
                      ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F16, n_enc_head_dim, total_patches_padding,

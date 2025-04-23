@@ -1,28 +1,20 @@
 ﻿#define CRT_SECURE_NO_DEPRECATE // disables "unsafe" warnings on Windows
 
+#include "realtime.h"
 #include "dinov2.h"
 #include "ggml.h"
 #include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
-#include "ggml-alloc.h"
 #include "ggml/examples/stb_image.h" // stb image load
-
 #include <cassert>
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
-#include <cstring>
 #include <fstream>
 #include <map>
 #include <string>
-#include <vector>
-#include <thread>
 #include <cinttypes>
-#include <algorithm>
 #include <iostream>
 #include <opencv2/imgproc.hpp>
-
 #include "ggml-backend.h"
 
 #if defined(_MSC_VER)
@@ -47,12 +39,7 @@ int main(int argc, char **argv) {
 
     fprintf(stderr, "%s: seed = %d\n", __func__, params.seed);
 
-    // int width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    // int height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-    int width = 854, height = 480;
-    // int width = 480, height = 240;
-
-    auto size = cv::Size(width, height);
+    auto size = cv::Size(FRAME_WIDTH, FRAME_HEIGHT);
 
     // load the model
     if (!dino_model_load(size, params.model, model, params)) {
@@ -60,8 +47,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    const auto new_size = cv::Size((width / model.hparams.patch_size + 1) * model.hparams.patch_size,
-                                   (height / model.hparams.patch_size + 1) * model.hparams.patch_size);
+    const auto new_size = cv::Size((FRAME_WIDTH / model.hparams.patch_size + 1) * model.hparams.patch_size,
+                                   (FRAME_HEIGHT / model.hparams.patch_size + 1) * model.hparams.patch_size);
 
     while (true) {
         cap.read(frame);
