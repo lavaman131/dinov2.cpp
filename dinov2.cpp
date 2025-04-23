@@ -102,52 +102,54 @@ static void ggml_disconnect_node_from_graph(ggml_tensor *t) {
 
 cv::Mat dino_classify_preprocess(cv::Mat &img, const cv::Size img_size, const dino_hparams &params) {
     // 1) Convert to float and resize
-    img.convertTo(img, CV_32FC3, 1.0 / 255.0);
+    cv::Mat image;
+    img.convertTo(image, CV_32FC3, 1.0 / 255.0);
 
     const auto new_size = cv::Size(256, 256);
-    cv::resize(img, img,
+    cv::resize(image, image,
                new_size,
                0, 0, cv::INTER_CUBIC);
 
     constexpr int crop_size = 224;
-    const int offset_w = (img.cols - crop_size) / 2;
-    const int offset_h = (img.rows - crop_size) / 2;
+    const int offset_w = (image.cols - crop_size) / 2;
+    const int offset_h = (image.rows - crop_size) / 2;
     const cv::Rect roi(offset_w, offset_h, crop_size, crop_size);
-    img = img(roi);
+    image = image(roi);
 
     // 3) Channel-wise standardization
     std::vector<cv::Mat> channels(3);
-    cv::split(img, channels);
+    cv::split(image, channels);
     for (int i = 0; i < 3; ++i) {
         channels[i] = (channels[i] - IMAGENET_DEFAULT_MEAN[2 - i])
                       / IMAGENET_DEFAULT_STD[2 - i];
     }
-    cv::merge(channels, img);
+    cv::merge(channels, image);
 
-    return img;
+    return image;
 }
 
 
 cv::Mat dino_preprocess(cv::Mat &img, const cv::Size img_size, const dino_hparams &params) {
     // 1) Convert to float and resize
-    img.convertTo(img, CV_32FC3, 1.0 / 255.0);
+    cv::Mat image;
+    img.convertTo(image, CV_32FC3, 1.0 / 255.0);
 
-    const auto new_size = cv::Size((img.cols / params.patch_size + 1) * params.patch_size,
-                                   (img.rows / params.patch_size + 1) * params.patch_size);
-    cv::resize(img, img,
+    const auto new_size = cv::Size((image.cols / params.patch_size + 1) * params.patch_size,
+                                   (image.rows / params.patch_size + 1) * params.patch_size);
+    cv::resize(image, image,
                new_size,
                0, 0, cv::INTER_CUBIC);
 
     // 3) Channel-wise standardization
     std::vector<cv::Mat> channels(3);
-    cv::split(img, channels);
+    cv::split(image, channels);
     for (int i = 0; i < 3; ++i) {
         channels[i] = (channels[i] - IMAGENET_DEFAULT_MEAN[2 - i])
                       / IMAGENET_DEFAULT_STD[2 - i];
     }
-    cv::merge(channels, img);
+    cv::merge(channels, image);
 
-    return img;
+    return image;
 }
 
 

@@ -59,20 +59,16 @@ int main(int argc, char **argv) {
 
         cv::resize(frame, frame, size, 0, 0, cv::INTER_NEAREST);
 
-        cv::imshow("Raw Camera", frame);
-
-
         // load the image
-        frame = dino_preprocess(frame, size, model.hparams);
+        cv::Mat input = dino_preprocess(frame, size, model.hparams);
 
         // output from model
         ggml_backend_synchronize(model.backend);
         int64_t start_time = ggml_time_ms();
-        std::unique_ptr<dino_output> output = dino_predict(model, frame, params);
+        std::unique_ptr<dino_output> output = dino_predict(model, input, params);
         ggml_backend_synchronize(model.backend);
         int64_t end_time = ggml_time_ms();
         fprintf(stderr, "%s: graph computation took %lld ms\n", __func__, end_time - start_time);
-
 
         // pca conversion
         const cv::Mat &patch_tokens = output->patch_tokens.value();
@@ -86,12 +82,15 @@ int main(int argc, char **argv) {
         cv::Mat projected_norm;
         cv::normalize(projected, projected_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
 
-        cv::Mat image = projected_norm.reshape(3, new_size.height / model.hparams.patch_size);
+        cv::Mat pca_image = projected_norm.reshape(3, new_size.height / model.hparams.patch_size);
 
-        cv::Mat resized_image;
-        cv::resize(image, resized_image, size, 0, 0, cv::INTER_NEAREST);
+        cv::resize(pca_image, pca_image, frame.size(), 0, 0, cv::INTER_NEAREST);
 
-        cv::imshow("PCA Features", resized_image);
+        cv::Mat combined_frame;
+        std::vector<cv::Mat> imgs = {frame, pca_image};
+        cv::hconcat(imgs, combined_frame);
+
+        cv::imshow("Output", combined_frame);
 
         if (cv::waitKey(1) == 'q') {
             break;
