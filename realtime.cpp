@@ -22,20 +22,20 @@
 #endif
 
 int main(int argc, char **argv) {
-    cv::VideoCapture cap(0);
-
-    if (!cap.isOpened()) {
-        std::cerr << "Error: Could not open camera." << std::endl;
-        return -1;
-    }
-    cv::Mat frame;
-
     dino_params params;
     dino_model model;
 
     if (dino_params_parse(argc, argv, params) == false) {
         return 1;
     }
+
+    cv::VideoCapture cap(params.camera_id);
+
+    if (!cap.isOpened()) {
+        std::cerr << "Error: Could not open camera." << std::endl;
+        return -1;
+    }
+    cv::Mat frame;
 
     fprintf(stderr, "%s: seed = %d\n", __func__, params.seed);
 

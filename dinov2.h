@@ -56,6 +56,7 @@ struct dino_params {
     uint32_t seed = 42;
     uint32_t topk = 5;
     bool enable_flash_attn = false;
+    uint8_t camera_id = 0; // camera id for realtime PCA feature streaming
     uint32_t n_threads = std::min(4u, std::thread::hardware_concurrency());;
     bool classify = false;
     std::string model = "../ggml-model-f16.gguf"; // model path

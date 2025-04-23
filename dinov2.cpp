@@ -737,8 +737,10 @@ void print_usage(int argc, char **argv, const dino_params &params) {
     fprintf(
         stderr, "  -fa, --flash_attn          whether to enable flash_attn, less accurate (default: %d)\n",
         params.enable_flash_attn);
-    fprintf(stderr, "  -s SEED, --seed         RNG seed (default: -1)\n");
-    fprintf(stderr, "  -e FLOAT, --epsilon     epsilon constant in Layer Norm layers (default: %f)\n", params.eps);
+    fprintf(
+        stderr,
+        "  -cid, --camera_id          the idea of the camera for realtime backbone PCA feature streaming (default: %d)\n",
+        params.camera_id);
     fprintf(stderr, "\n");
 }
 
@@ -758,8 +760,8 @@ bool dino_params_parse(int argc, char **argv, dino_params &params) {
             params.n_threads = std::stoi(argv[++i]);
         } else if (arg == "-k" || arg == "--topk") {
             params.topk = std::stoi(argv[++i]);
-        } else if (arg == "-e" || arg == "--epsilon") {
-            params.eps = std::stof(argv[++i]);
+        } else if (arg == "-cid" || arg == "--camera_id") {
+            params.camera_id = std::stoi(argv[++i]);
         } else if (arg == "-fa" || arg == "--flash_attn") {
             params.enable_flash_attn = true;
         } else if (arg == "-c" || arg == "--classify") {
