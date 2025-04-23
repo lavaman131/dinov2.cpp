@@ -28,7 +28,7 @@ existing code from [vit.cpp](https://github.com/staghado/vit.cpp).
         - [Using OpenMP](#using-openmp)
     - [Run](#run)
     - [Benchmark against PyTorch](#benchmark-against-pytorch)
-        - [ViT inference](#vit-inference)
+        - [DINOv2 inference](#dinov2-inference)
         - [Benchmark on your machine](#benchmark-on-your-machine)
     - [Quantization](#quantization)
         - [Results](#results)
@@ -109,21 +109,16 @@ source .venv/bin/activate
 .venv\Scripts\activate
 uv sync --frozen
 
-# convert the weights to gguf : vit tiny with patch size of 16 and an image 
-# size of 384 pre-trained on ImageNet21k and fine-tuned on ImageNet1k
+# convert the weights to gguf : dinov2 small with patch size of 14 and an image 
+# size of 518  
 # DINOv2 weights are always fp16
 # without registers
 python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-small-imagenet1k-1-layer --ftype 1
 # with registers
 python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-with-registers-small-imagenet1k-1-layer --ftype 1
-python ./scripts/vit-to-ggml.py --model_name vit_tiny_patch16_384.augreg_in21k_ft_in1k --ftype 1
+
 
 ```
-
-> **Note:** You can also download the converted weights from [Hugging Face](https://huggingface.co/staghado/vit.cpp)
-> directly.
-
-> ```wget https://huggingface.co/staghado/vit.cpp/blob/main/tiny-ggml-model-f16.gguf```
 
 ## Build
 
@@ -178,21 +173,23 @@ Additionally compile with OpenMP by specifying the `-fopenmp` flag to the compil
 allowing multithreaded runs. Make sure to also enable multiple threads when running, e.g.:
 
 ```bash
-OMP_NUM_THREADS=4 ./bin/vit -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
+OMP_NUM_THREADS=4 ./bin/dinov2 -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
 ```
 
 ## Run
 
 ```bash
-usage: ./bin/vit [options]
+usage: ./bin/dinov2 [options]
 
 options:
     -h, --help              show this help message and exit
-    -s SEED, --seed SEED    RNG seed (default: -1)
-    -t N, --threads N       number of threads to use during computation (default: 4)
     -m FNAME, --model FNAME model path (default: ../ggml-model-f16.bin)
     -i FNAME, --inp FNAME   input file (default: ../assets/tench.jpg)
+    -o FNAME, --out         output file path (default: pca_visual.jpg)
     -k N, --topk N          top k classes to print (default: 5)
+    -t N, --threads N       number of threads to use during computation (default: 4)
+    -c, --classify          whether to classify the image or get backbone features
+    -s SEED, --seed SEED    RNG seed (default: 42)
     -e FLOAT, --epsilon     epsilon (default: 0.000001)
 ```
 
