@@ -198,28 +198,35 @@ options:
 
 ## Benchmark against PyTorch
 
-First experiments on Apple M1 show inference speedups(up to 6x faster for base model) compared to native PyTorch
-inference.
+First experiments on Intel Core i9-14900HX show inference speedups(up to 3x faster for small model, ~1.5-2x faster for the rest) compared to native PyTorch inference.
 
-### EINOv2 inference
+### DINOv2 inference
 
-You can efficiently run DINO inference on the CPU.
+You can efficiently run DINOv2 inference on the CPU.
 
-Todo: 
-Update benchmarks
+Memory requirements and inference speed on Intel Core i9-14900HX (24 cores, 32 threads) for both native PyTorch and `dinov2.cpp`.
+Using a thread count greater than 10 provides marginal improvements, but 32 threads were used for these runs. The reported results of inference speed correspond to 100 runs
+averages for both PyTorch and `dinov2.cpp`.
 
-Memory requirements and inference speed on AMD Ryzen 7 3700U(4 cores, 8 threads) for both native PyTorch and `vit.cpp`.
-Using 4 threads gives better results for my machine. The reported results of inference speed correspond to 10 runs
-averages for both PyTorch and `vit.cpp`.
-
+#### DINOv2 with Register Tokens
 | Model | Max Mem(PyTorch) |   Max Mem   | Speed(PyTorch) |    Speed    |
 |:-----:|:----------------:|:-----------:|:--------------:|:-----------:|
-| tiny  |     ~780 MB      | **~20 MB**  |     431 ms     | **120 ms**  |
-| small |     ~965 MB      | **~52 MB**  |     780 ms     | **463 ms**  |
-| base  |     ~1.61 GB     | **~179 MB** |    2393 ms     | **1441 ms** |
-| large |     ~3.86 GB     | **~597 MB** |    8151 ms     | **4892 ms** |
+| small  |     ~457 MB      | **~110 MB**  |     297 ms     | **97 ms**  |
+| base |     ~720 MB      | **~367 MB**  |     436 ms     | **269 ms**  |
+| large  |     ~1.57 GB     | **~1.2 GB** |    1331 ms     | **802 ms** |
+| giant |     ~4.8 GB     | **~4.4 GB** |    4472 ms     | **2775 ms** |
 
-> **Note:** The models used are of the form `vit_{size}_patch16_224.augreg_in21k_ft_in1k`.
+> **Note:** The models used are of the form `dinov2-with-registers-{size}-imagenet1k-1-layer`
+
+#### DINOv2 without Register Tokens
+| Model | Max Mem(PyTorch) |   Max Mem   | Speed(PyTorch) |    Speed    |
+|:-----:|:----------------:|:-----------:|:--------------:|:-----------:|
+| small  |     ~455 MB      | **~110 MB**  |     181 ms     | **73 ms**  |
+| base |     ~720 MB      | **~365 MB**  |     462 ms     | **242 ms**  |
+| large  |     ~1.55 GB     | **~1.2 GB** |    1288 ms     | **775 ms** |
+| giant |     ~4.8 GB     | **~4.4 GB** |    4384 ms     | **2725 ms** |
+
+> **Note:** The models used are of the form `dinov2-{size}-imagenet1k-1-layer`.
 
 ### Benchmark on your machine
 
@@ -234,7 +241,7 @@ pip install memory_profiler threadpoolctl
 # run the benchmark of PyTorch
 python scripts/benchmark.py
 
-# run the benchmark of vit.cpp for non-qunatized model
+# run the benchmark of dinov2.cpp for non-qunatized model
 ./scripts/benchmark.sh
 
 # to run the benchamrk for qunatized models; 4 threads and quantize flag
