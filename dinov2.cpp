@@ -346,6 +346,7 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
     const uint32_t hidden_size = model.hparams.hidden_size;
     const int64_t W = cur->ne[1];
     const int64_t H = cur->ne[2];
+    const int64_t total_patches = W * H;
 
     // self-attention
 
@@ -420,450 +421,460 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
                                                      KQV,
                                                      0, 2, 1, 3)),
                               hidden_size, W, H, 1);
-
-        cur = ggml_mul_mat(
-            ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.output.dense.weight"),
-            cur);
-        cur = ggml_add_inplace(ctx_cgraph, cur,
-                               model.tensors.at(
-                                   "encoder.layer." + std::to_string(il) + ".attention.output.dense.bias"));
-
-        return cur;
     }
 
-    struct ggml_tensor *mlp(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph,
-                            const dino_model &model,
-                            const dino_params &params) {
-        // fully connected layer
-        cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight"),
-                           cur);
-        cur = ggml_add_inplace(ctx_cgraph, cur,
-                               model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.bias"));
+    cur = ggml_mul_mat(
+        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.output.dense.weight"),
+        cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at(
+                               "encoder.layer." + std::to_string(il) + ".attention.output.dense.bias"));
 
-        // GELU activation
-        cur = ggml_gelu(ctx_cgraph, cur);
+    return cur;
+}
 
-        // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-        //         << std::endl;
+struct ggml_tensor *mlp(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph,
+                        const dino_model &model,
+                        const dino_params &params) {
+    // fully connected layer
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight"),
+                       cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.bias"));
 
-        // projection
-        cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.weight"),
-                           cur);
-        cur = ggml_add_inplace(ctx_cgraph, cur,
-                               model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.bias"));
-        return cur;
-    }
+    // GELU activation
+    cur = ggml_gelu(ctx_cgraph, cur);
 
-    struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph,
-                                   const dino_model &model,
-                                   const dino_params &params) {
-        // fully connected layer
-        cur = ggml_mul_mat(
-            ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_in.weight"),
-            cur);
-        cur = ggml_add_inplace(ctx_cgraph, cur,
-                               model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_in.bias"));
+    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+    //         << std::endl;
 
-        // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-        //         << std::endl;
+    // projection
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.weight"),
+                       cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.bias"));
+    return cur;
+}
 
-        int64_t ne0 = cur->ne[0] / 2;
-        int64_t ne1 = cur->ne[1];
-        int64_t ne2 = cur->ne[2];
-        int64_t ne3 = cur->ne[3];
-        size_t nb0 = cur->nb[0];
-        size_t nb1 = cur->nb[1];
-        size_t nb2 = cur->nb[2];
-        size_t nb3 = cur->nb[3];
-        size_t offset = nb0 * ne0;
+struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph,
+                               const dino_model &model,
+                               const dino_params &params) {
+    // fully connected layer
+    cur = ggml_mul_mat(
+        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_in.weight"),
+        cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_in.bias"));
 
-        struct ggml_tensor *cur1 = ggml_view_4d(ctx_cgraph, cur, ne0, ne1, ne2, ne3,
-                                                nb1, nb2, nb3, 0);
+    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+    //         << std::endl;
 
-        struct ggml_tensor *cur2 = ggml_view_4d(ctx_cgraph, cur, ne0, ne1, ne2, ne3,
-                                                nb1, nb2, nb3, offset);
+    int64_t ne0 = cur->ne[0] / 2;
+    int64_t ne1 = cur->ne[1];
+    int64_t ne2 = cur->ne[2];
+    int64_t ne3 = cur->ne[3];
+    size_t nb0 = cur->nb[0];
+    size_t nb1 = cur->nb[1];
+    size_t nb2 = cur->nb[2];
+    size_t nb3 = cur->nb[3];
+    size_t offset = nb0 * ne0;
 
-        // SILU activation
-        cur = ggml_mul_inplace(ctx_cgraph, ggml_silu(ctx_cgraph, ggml_cont(ctx_cgraph, cur1)), cur2);
+    struct ggml_tensor *cur1 = ggml_view_4d(ctx_cgraph, cur, ne0, ne1, ne2, ne3,
+                                            nb1, nb2, nb3, 0);
 
-        // projection
-        cur = ggml_mul_mat(
-            ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.weight"),
-            cur);
-        cur = ggml_add_inplace(ctx_cgraph, cur,
-                               model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.bias"));
-        return cur;
-    }
+    struct ggml_tensor *cur2 = ggml_view_4d(ctx_cgraph, cur, ne0, ne1, ne2, ne3,
+                                            nb1, nb2, nb3, offset);
 
-    void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
-                          const dino_model &model, const dino_params &params) {
-        const uint32_t hidden_size = model.hparams.hidden_size;
-        const uint32_t num_hidden_layers = model.hparams.num_hidden_layers;
-        const uint32_t n_enc_head_dim = model.hparams.n_enc_head_dim();
-        const uint32_t num_register_tokens = model.hparams.num_register_tokens;
-        const int h0 = img_size.height / model.hparams.patch_size;
-        const int w0 = img_size.width / model.hparams.patch_size;
-        const int num_patches = h0 * w0;
+    // SILU activation
+    cur = ggml_mul_inplace(ctx_cgraph, ggml_silu(ctx_cgraph, ggml_cont(ctx_cgraph, cur1)), cur2);
 
-        const float scale = 1.0f / sqrtf(static_cast<float>(n_enc_head_dim));
-        // (W, H, C, B)
-        // (518, 518, 3, 1)
-        struct ggml_tensor *input =
-                ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F32, img_size.width, img_size.height, 3, 1);
-        ggml_set_name(input, "input");
+    // projection
+    cur = ggml_mul_mat(
+        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.weight"),
+        cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.bias"));
+    return cur;
+}
 
-        // patch embedding
-        // (37, 37, 768, 1)
-        // std::cout << "patch embed " << enc.patch_embed_w->ne[0] << std::endl;
-        struct ggml_tensor *cur = ggml_conv_2d_sk_p0(
-            ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.weight"), input);
+void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                      const dino_model &model, const dino_params &params) {
+    const uint32_t hidden_size = model.hparams.hidden_size;
+    const uint32_t num_hidden_layers = model.hparams.num_hidden_layers;
+    const uint32_t n_enc_head_dim = model.hparams.n_enc_head_dim();
+    const uint32_t num_register_tokens = model.hparams.num_register_tokens;
+    const int h0 = img_size.height / model.hparams.patch_size;
+    const int w0 = img_size.width / model.hparams.patch_size;
+    const int num_patches = h0 * w0;
 
-        cur = ggml_add_inplace(ctx_cgraph,
-                               cur,
-                               ggml_repeat(ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.bias"),
-                                           cur)); // (37, 37, 768, 1)
-        cur = ggml_cont(ctx_cgraph,
-                        ggml_permute(ctx_cgraph, cur, 1, 2, 0, 3)); // (37, 768, 37, 1)
-        //
-        // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-        //         << std::endl;
+    const float scale = 1.0f / sqrtf(static_cast<float>(n_enc_head_dim));
+    // (W, H, C, B)
+    // (518, 518, 3, 1)
+    struct ggml_tensor *input =
+            ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F32, img_size.width, img_size.height, 3, 1);
+    ggml_set_name(input, "input");
 
-        //
-        // add positional embedding
-        // cur dim     : 768  37  37  1
-        // enc.pe dim  : 768  1370  1  1
+    // patch embedding
+    // (37, 37, 768, 1)
+    // std::cout << "patch embed " << enc.patch_embed_w->ne[0] << std::endl;
+    struct ggml_tensor *cur = ggml_conv_2d_sk_p0(
+        ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.weight"), input);
 
-        // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-        //         << std::endl;
-        //
-        // reshape patch embeddings from (768  37  37  1) to (768  1369  1  1)
-        cur = ggml_reshape_4d(ctx_cgraph, cur, hidden_size, num_patches, 1, 1);
+    cur = ggml_add_inplace(ctx_cgraph,
+                           cur,
+                           ggml_repeat(ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.bias"),
+                                       cur)); // (37, 37, 768, 1)
+    cur = ggml_cont(ctx_cgraph,
+                    ggml_permute(ctx_cgraph, cur, 1, 2, 0, 3)); // (37, 768, 37, 1)
+    //
+    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+    //         << std::endl;
 
-        struct ggml_tensor *pos_embed_fixed = ggml_new_tensor_3d(ctx_cgraph, GGML_TYPE_F32, model.hparams.hidden_size,
-                                                                 num_patches + 1, 1
-        );
-        ggml_set_name(pos_embed_fixed, "pos_embed_fixed");
+    //
+    // add positional embedding
+    // cur dim     : 768  37  37  1
+    // enc.pe dim  : 768  1370  1  1
 
-        cur = ggml_concat(ctx_cgraph, model.tensors.at("embeddings.cls_token"), cur, 1);
+    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+    //         << std::endl;
+    //
+    // reshape patch embeddings from (768  37  37  1) to (768  1369  1  1)
+    cur = ggml_reshape_4d(ctx_cgraph, cur, hidden_size, num_patches, 1, 1);
 
-        cur = ggml_add_inplace(ctx_cgraph, cur, pos_embed_fixed);
+    struct ggml_tensor *pos_embed_fixed = ggml_new_tensor_3d(ctx_cgraph, GGML_TYPE_F32, model.hparams.hidden_size,
+                                                             num_patches + 1, 1
+    );
+    ggml_set_name(pos_embed_fixed, "pos_embed_fixed");
 
-        if (num_register_tokens > 0) {
-            struct ggml_tensor *cls_token = ggml_view_1d(ctx_cgraph, cur, hidden_size, 0);
-            struct ggml_tensor *patch_tokens = ggml_view_4d(ctx_cgraph, cur, cur->ne[0], cur->ne[1] - 1,
-                                                            cur->ne[2],
-                                                            cur->ne[3],
-                                                            cur->nb[1],
-                                                            cur->nb[2],
-                                                            cur->nb[3],
-                                                            cur->nb[1]);
-            cur = ggml_concat(ctx_cgraph, ggml_concat(ctx_cgraph, cls_token,
-                                                      model.tensors.at("embeddings.register_tokens"),
-                                                      1), patch_tokens, 1);
-        }
+    cur = ggml_concat(ctx_cgraph, model.tensors.at("embeddings.cls_token"), cur, 1);
 
-        struct ggml_tensor *inpL = cur;
-        //
-        // loop over layers
-        for (int il = 0; il < num_hidden_layers; ++il) {
-            // norm 1
-            {
-                cur = ggml_norm(ctx_cgraph, inpL, model.hparams.eps);
+    cur = ggml_add_inplace(ctx_cgraph, cur, pos_embed_fixed);
 
-                // cur = w * cur + b
-                cur = ggml_mul_inplace(ctx_cgraph, cur,
-                                       model.tensors.at("encoder.layer." + std::to_string(il) + ".norm1.weight"));
-                cur = ggml_add_inplace(ctx_cgraph, cur,
-                                       model.tensors.at("encoder.layer." + std::to_string(il) + ".norm1.bias"));
-            }
-
-            // std::cout << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3] << std::endl;
-
-            // self attn
-            cur = attn(cur, scale, il, ctx_cgraph, model, params);
-
-            cur = ggml_mul_inplace(ctx_cgraph, cur,
-                                   model.tensors.at(
-                                       "encoder.layer." + std::to_string(il) +
-                                       ".layer_scale1.lambda1"));
-
-            // add skip connection
-            cur = ggml_add_inplace(ctx_cgraph, cur, inpL);
-
-            struct ggml_tensor *inpFF = cur;
-
-            // feed-forward network
-            {
-                // norm 2
-                {
-                    cur = ggml_norm(ctx_cgraph, inpFF, model.hparams.eps);
-
-                    // cur = w * cur + b
-                    cur = ggml_mul_inplace(ctx_cgraph, cur,
-                                           model.tensors.at("encoder.layer." + std::to_string(il) + ".norm2.weight"));
-                    cur = ggml_add_inplace(ctx_cgraph, cur,
-                                           model.tensors.at("encoder.layer." + std::to_string(il) + ".norm2.bias"));
-                }
-
-                // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-                //         << std::endl;
-                //
-                // std::cout << "mlp.fc1 size " << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")
-                //         ->ne[0] << ", "
-                //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[1] << ", "
-                //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[2] << ", "
-                //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[3] << std::endl;
-
-                if (model.hparams.num_hidden_layers == 40)
-                    cur = swiglu_ffn(cur, il, ctx_cgraph, model, params);
-                else
-                    cur = mlp(cur, il, ctx_cgraph, model, params);
-                cur = ggml_mul_inplace(ctx_cgraph, cur,
-                                       model.tensors.
-                                       at("encoder.layer." + std::to_string(il) + ".layer_scale2.lambda1"));
-            }
-            //
-            inpL = ggml_add_inplace(ctx_cgraph, cur, inpFF);
-        }
-
-        cur = inpL;
-
-        // layer normalization
-        {
-            cur = ggml_norm_inplace(ctx_cgraph, cur, model.hparams.eps);
-
-            // cur = w * cur + b
-            cur = ggml_mul_inplace(ctx_cgraph, cur, model.tensors.at("layernorm.weight"));
-            cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("layernorm.bias"));
-        }
-
-        // get the output of cls token at index 0
+    if (num_register_tokens > 0) {
         struct ggml_tensor *cls_token = ggml_view_1d(ctx_cgraph, cur, hidden_size, 0);
-
-        ggml_set_output(cls_token);
-        ggml_set_name(cls_token, "cls_token");
-        ggml_build_forward_expand(graph, cls_token);
-
-        int64_t ne1 = cur->ne[1] - 1;
-        size_t offset = cur->nb[1];
-        if (!params.classify) {
-            // include register tokens for classification pooling
-            ne1 -= num_register_tokens;
-            offset *= (num_register_tokens + 1);
-        }
-
-        struct ggml_tensor *patch_tokens = ggml_view_4d(ctx_cgraph, cur, cur->ne[0],
-                                                        ne1,
+        struct ggml_tensor *patch_tokens = ggml_view_4d(ctx_cgraph, cur, cur->ne[0], cur->ne[1] - 1,
                                                         cur->ne[2],
                                                         cur->ne[3],
                                                         cur->nb[1],
                                                         cur->nb[2],
                                                         cur->nb[3],
-                                                        offset);
-
-        ggml_set_output(patch_tokens);
-        ggml_set_name(patch_tokens, "patch_tokens");
-        ggml_build_forward_expand(graph, patch_tokens);
+                                                        cur->nb[1]);
+        cur = ggml_concat(ctx_cgraph, ggml_concat(ctx_cgraph, cls_token,
+                                                  model.tensors.at("embeddings.register_tokens"),
+                                                  1), patch_tokens, 1);
     }
 
-    void forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
-                      const dino_model &model, const dino_params &params) {
-        const int32_t n_img_embd = model.hparams.n_img_embd();
+    struct ggml_tensor *inpL = cur;
+    //
+    // loop over layers
+    for (int il = 0; il < num_hidden_layers; ++il) {
+        // norm 1
+        {
+            cur = ggml_norm(ctx_cgraph, inpL, model.hparams.eps);
 
-        struct ggml_tensor *cls_token = ggml_graph_get_tensor(graph, "cls_token");
-        struct ggml_tensor *patch_tokens = ggml_graph_get_tensor(graph, "patch_tokens");
-        // classification head
+            // cur = w * cur + b
+            cur = ggml_mul_inplace(ctx_cgraph, cur,
+                                   model.tensors.at("encoder.layer." + std::to_string(il) + ".norm1.weight"));
+            cur = ggml_add_inplace(ctx_cgraph, cur,
+                                   model.tensors.at("encoder.layer." + std::to_string(il) + ".norm1.bias"));
+        }
 
-        struct ggml_tensor *pooled_patch_tokens = ggml_sum_rows(
-            ctx_cgraph, ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, patch_tokens, 1, 0, 2, 3)));
-        pooled_patch_tokens = ggml_scale_inplace(ctx_cgraph, pooled_patch_tokens,
-                                                 1.0f / static_cast<float>(n_img_embd * n_img_embd));
+        // std::cout << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3] << std::endl;
 
-        struct ggml_tensor *cur = ggml_concat(ctx_cgraph, cls_token, ggml_permute(
-                                                  ctx_cgraph, pooled_patch_tokens, 1,
-                                                  0, 2,
-                                                  3), 0);
+        // self attn
+        cur = attn(cur, scale, il, ctx_cgraph, model, params);
 
-        // projection
-        cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("classifier.weight"), cur);
-        cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("classifier.bias"));
+        cur = ggml_mul_inplace(ctx_cgraph, cur,
+                               model.tensors.at(
+                                   "encoder.layer." + std::to_string(il) +
+                                   ".layer_scale1.lambda1"));
 
-        // softmax
-        ggml_tensor *probs = ggml_soft_max(ctx_cgraph, cur);
+        // add skip connection
+        cur = ggml_add_inplace(ctx_cgraph, cur, inpL);
+
+        struct ggml_tensor *inpFF = cur;
+
+        // feed-forward network
+        {
+            // norm 2
+            {
+                cur = ggml_norm(ctx_cgraph, inpFF, model.hparams.eps);
+
+                // cur = w * cur + b
+                cur = ggml_mul_inplace(ctx_cgraph, cur,
+                                       model.tensors.at("encoder.layer." + std::to_string(il) + ".norm2.weight"));
+                cur = ggml_add_inplace(ctx_cgraph, cur,
+                                       model.tensors.at("encoder.layer." + std::to_string(il) + ".norm2.bias"));
+            }
+
+            // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
+            //         << std::endl;
+            //
+            // std::cout << "mlp.fc1 size " << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")
+            //         ->ne[0] << ", "
+            //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[1] << ", "
+            //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[2] << ", "
+            //         << model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight")->ne[3] << std::endl;
+
+            if (model.hparams.num_hidden_layers == 40)
+                cur = swiglu_ffn(cur, il, ctx_cgraph, model, params);
+            else
+                cur = mlp(cur, il, ctx_cgraph, model, params);
+            cur = ggml_mul_inplace(ctx_cgraph, cur,
+                                   model.tensors.
+                                   at("encoder.layer." + std::to_string(il) + ".layer_scale2.lambda1"));
+        }
         //
-        ggml_set_output(probs);
-        ggml_set_name(probs, "probs");
-
-        ggml_build_forward_expand(graph, probs);
+        inpL = ggml_add_inplace(ctx_cgraph, cur, inpFF);
     }
 
-    struct ggml_cgraph *build_graph(
-        const cv::Size img_size,
-        struct ggml_context *ctx_cgraph,
-        const dino_model &model,
-        const dino_params &params) {
-        const auto &hparams = model.hparams;
+    cur = inpL;
 
-        struct ggml_cgraph *gf = ggml_new_graph(ctx_cgraph);
+    // layer normalization
+    {
+        cur = ggml_norm_inplace(ctx_cgraph, cur, model.hparams.eps);
 
-        forward_features(img_size, gf, ctx_cgraph, model, params);
-
-        if (params.classify)
-            forward_head(img_size, gf, ctx_cgraph, model, params);
-
-        return gf;
+        // cur = w * cur + b
+        cur = ggml_mul_inplace(ctx_cgraph, cur, model.tensors.at("layernorm.weight"));
+        cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("layernorm.bias"));
     }
 
-    void print_usage(int argc, char **argv, const dino_params &params) {
-        fprintf(stderr, "usage: %s [options]\n", argv[0]);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "options:\n");
-        fprintf(stderr, "  -h, --help              show this help message and exit\n");
-        fprintf(stderr, "  -m FNAME, --model       model path (default: %s)\n", params.model.c_str());
-        fprintf(stderr, "  -i FNAME, --inp         input file (default: %s)\n", params.fname_inp.c_str());
-        fprintf(stderr, "  -k N, --topk            top k classes to print (default: %d)\n", params.topk);
-        fprintf(stderr, "  -t N, --threads         number of threads to use during computation (default: %d)\n",
-                params.n_threads);
-        fprintf(
-            stderr, "  -c, --classify          whether to classify the image or get backbone features (default: %d)\n",
-            params.classify);
-        fprintf(stderr, "  -s SEED, --seed         RNG seed (default: -1)\n");
-        fprintf(stderr, "  -e FLOAT, --epsilon     epsilon constant in Layer Norm layers (default: %f)\n", params.eps);
-        fprintf(stderr, "\n");
+    // get the output of cls token at index 0
+    struct ggml_tensor *cls_token = ggml_view_1d(ctx_cgraph, cur, hidden_size, 0);
+
+    ggml_set_output(cls_token);
+    ggml_set_name(cls_token, "cls_token");
+    ggml_build_forward_expand(graph, cls_token);
+
+    int64_t ne1 = cur->ne[1] - 1;
+    size_t offset = cur->nb[1];
+    if (!params.classify) {
+        // include register tokens for classification pooling
+        ne1 -= num_register_tokens;
+        offset *= (num_register_tokens + 1);
     }
 
-    bool dino_params_parse(int argc, char **argv, dino_params &params) {
-        for (int i = 1; i < argc; i++) {
-            std::string arg = argv[i];
+    struct ggml_tensor *patch_tokens = ggml_view_4d(ctx_cgraph, cur, cur->ne[0],
+                                                    ne1,
+                                                    cur->ne[2],
+                                                    cur->ne[3],
+                                                    cur->nb[1],
+                                                    cur->nb[2],
+                                                    cur->nb[3],
+                                                    offset);
 
-            if (arg == "-s" || arg == "--seed") {
-                params.seed = std::stoi(argv[++i]);
-            } else if (arg == "-m" || arg == "--model") {
-                params.model = argv[++i];
-            } else if (arg == "-i" || arg == "--inp") {
-                params.fname_inp = argv[++i];
-            } else if (arg == "-t" || arg == "--threads") {
-                params.n_threads = std::stoi(argv[++i]);
-            } else if (arg == "-k" || arg == "--topk") {
-                params.topk = std::stoi(argv[++i]);
-            } else if (arg == "-e" || arg == "--epsilon") {
-                params.eps = std::stof(argv[++i]);
-            } else if (arg == "-c" || arg == "--classify") {
-                params.classify = true;
-            } else if (arg == "-h" || arg == "--help") {
-                print_usage(argc, argv, params);
-                exit(0);
-            } else {
-                fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
-                print_usage(argc, argv, params);
-                exit(0);
-            }
-        }
+    ggml_set_output(patch_tokens);
+    ggml_set_name(patch_tokens, "patch_tokens");
+    ggml_build_forward_expand(graph, patch_tokens);
+}
 
-        return true;
-    }
+void forward_head(const cv::Size img_size, struct ggml_cgraph *graph, struct ggml_context *ctx_cgraph,
+                  const dino_model &model, const dino_params &params) {
+    const int32_t n_img_embd = model.hparams.n_img_embd();
 
-    std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat &img,
-                                              const dino_params &params) {
-        struct ggml_init_params params0 = {
-            /*.mem_size   =*/ ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead(),
-            /*.mem_buffer =*/ nullptr,
-            /*.no_alloc   =*/ true, // the tensors will be allocated later by ggml_gallocr_alloc_graph()
-        };
-        struct ggml_context *ctx_cgraph = ggml_init(params0);
-        struct ggml_cgraph *gf = build_graph(img.size(), ctx_cgraph, model, params);
+    struct ggml_tensor *cls_token = ggml_graph_get_tensor(graph, "cls_token");
+    struct ggml_tensor *patch_tokens = ggml_graph_get_tensor(graph, "patch_tokens");
+    // classification head
 
-        ggml_gallocr_t allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
-        ggml_gallocr_alloc_graph(allocr, gf);
+    struct ggml_tensor *pooled_patch_tokens = ggml_sum_rows(
+        ctx_cgraph, ggml_cont(ctx_cgraph, ggml_permute(ctx_cgraph, patch_tokens, 1, 0, 2, 3)));
+    pooled_patch_tokens = ggml_scale_inplace(ctx_cgraph, pooled_patch_tokens,
+                                             1.0f / static_cast<float>(n_img_embd * n_img_embd));
 
-        struct ggml_tensor *input = ggml_graph_get_tensor(gf, "input");
+    struct ggml_tensor *cur = ggml_concat(ctx_cgraph, cls_token, ggml_permute(
+                                              ctx_cgraph, pooled_patch_tokens, 1,
+                                              0, 2,
+                                              3), 0);
 
-        std::vector<float> planar(img.total() * 3);
-        float *out = planar.data();
+    // projection
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("classifier.weight"), cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur, model.tensors.at("classifier.bias"));
 
-        // Split BGR image into channels (OpenCV will do B, G, R)
-        std::vector<cv::Mat> bgr_channels(3);
-        cv::split(img, bgr_channels);
+    // softmax
+    ggml_tensor *probs = ggml_soft_max(ctx_cgraph, cur);
+    //
+    ggml_set_output(probs);
+    ggml_set_name(probs, "probs");
 
-        // Create output Mats for planar format in **RGB order**
-        std::vector<cv::Mat> rgb_planar_channels = {
-            cv::Mat(img.rows, img.cols, CV_32F, out + 0 * img.total()), // R
-            cv::Mat(img.rows, img.cols, CV_32F, out + 1 * img.total()), // G
-            cv::Mat(img.rows, img.cols, CV_32F, out + 2 * img.total()) // B
-        };
+    ggml_build_forward_expand(graph, probs);
+}
 
-        // Copy from BGR channels into RGB-planar layout
-        bgr_channels[2].copyTo(rgb_planar_channels[0]); // R <- from BGR[2]
-        bgr_channels[1].copyTo(rgb_planar_channels[1]); // G <- from BGR[1]
-        bgr_channels[0].copyTo(rgb_planar_channels[2]); // B <- from BGR[0]
+struct ggml_cgraph *build_graph(
+    const cv::Size img_size,
+    struct ggml_context *ctx_cgraph,
+    const dino_model &model,
+    const dino_params &params) {
+    const auto &hparams = model.hparams;
 
-        ggml_backend_tensor_set(input, planar.data(), 0, ggml_nbytes(input));
+    struct ggml_cgraph *gf = ggml_new_graph(ctx_cgraph);
 
-        const struct ggml_tensor *pos_embed = ggml_get_tensor(model.ctx, "embeddings.position_embeddings");
+    forward_features(img_size, gf, ctx_cgraph, model, params);
 
-        const std::vector<float> pos_embed_fixed_data = interpolate_pos_embed(
-            img.size(), ggml_get_data_f32(pos_embed), model.hparams);
+    if (params.classify)
+        forward_head(img_size, gf, ctx_cgraph, model, params);
 
-        struct ggml_tensor *pos_embed_fixed = ggml_graph_get_tensor(gf, "pos_embed_fixed");
+    return gf;
+}
 
-        ggml_backend_tensor_set(pos_embed_fixed, pos_embed_fixed_data.data(), 0, ggml_nbytes(pos_embed_fixed));
-        // print_t_f32("pos_embed_fixed", pos_embed_fixed);
+void print_usage(int argc, char **argv, const dino_params &params) {
+    fprintf(stderr, "usage: %s [options]\n", argv[0]);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "options:\n");
+    fprintf(stderr, "  -h, --help              show this help message and exit\n");
+    fprintf(stderr, "  -m FNAME, --model       model path (default: %s)\n", params.model.c_str());
+    fprintf(stderr, "  -i FNAME, --inp         input file (default: %s)\n", params.fname_inp.c_str());
+    fprintf(stderr, "  -o FNAME, --out         output file for backbone PCA features (default: %s)\n",
+            params.image_out.c_str());
+    fprintf(stderr, "  -k N, --topk            top k classes to print (default: %d)\n", params.topk);
+    fprintf(stderr, "  -t N, --threads         number of threads to use during computation (default: %d)\n",
+            params.n_threads);
+    fprintf(
+        stderr, "  -c, --classify          whether to classify the image or get backbone PCA features (default: %d)\n",
+        params.classify);
+    fprintf(
+        stderr, "  -fa, --flash_attn          whether to enable flash_attn (default: %d)\n",
+        params.enable_flash_attn);
+    fprintf(stderr, "  -s SEED, --seed         RNG seed (default: -1)\n");
+    fprintf(stderr, "  -e FLOAT, --epsilon     epsilon constant in Layer Norm layers (default: %f)\n", params.eps);
+    fprintf(stderr, "\n");
+}
 
-        if (ggml_backend_graph_compute(model.backend, gf) != GGML_STATUS_SUCCESS) {
-            fprintf(stderr, "%s: ggml_backend_graph_compute() failed\n", __func__);
-            return {};
-        }
+bool dino_params_parse(int argc, char **argv, dino_params &params) {
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
 
-        auto output = std::make_unique<dino_output>();
-
-        if (params.classify) {
-            struct ggml_tensor *probs = ggml_graph_get_tensor(gf, "probs");
-            const float *probs_data = ggml_get_data_f32(probs);
-            std::vector<std::pair<float, int> > predictions;
-            // store probability and index
-            for (int i = 0; i < model.hparams.num_classes; ++i) {
-                predictions.emplace_back(probs_data[i], i);
-            }
-
-            // sort in descending order
-            std::sort(predictions.begin(), predictions.end(),
-                      [](const std::pair<float, int> &a, const std::pair<float, int> &b) {
-                          return a.first > b.first;
-                      });
-
-            fprintf(stderr, "\n");
-
-            // top k predictions
-            std::vector<uint32_t> preds(params.topk);
-            for (int i = 0; i < params.topk && i < predictions.size(); ++i) {
-                printf(" > %s : %.2f\n",
-                       model.hparams.id2label.at(predictions[i].second).c_str(),
-                       predictions[i].first);
-                preds[i] = static_cast<uint32_t>(predictions[i].first);
-            }
-
-            output->preds = preds;
+        if (arg == "-s" || arg == "--seed") {
+            params.seed = std::stoi(argv[++i]);
+        } else if (arg == "-m" || arg == "--model") {
+            params.model = argv[++i];
+        } else if (arg == "-i" || arg == "--inp") {
+            params.fname_inp = argv[++i];
+        } else if (arg == "-o" || arg == "--out") {
+            params.fname_inp = argv[++i];
+        } else if (arg == "-t" || arg == "--threads") {
+            params.n_threads = std::stoi(argv[++i]);
+        } else if (arg == "-k" || arg == "--topk") {
+            params.topk = std::stoi(argv[++i]);
+        } else if (arg == "-e" || arg == "--epsilon") {
+            params.eps = std::stof(argv[++i]);
+        } else if (arg == "-fa" || arg == "--flash_attn") {
+            params.enable_flash_attn = true;
+        } else if (arg == "-c" || arg == "--classify") {
+            params.classify = true;
+        } else if (arg == "-h" || arg == "--help") {
+            print_usage(argc, argv, params);
+            exit(0);
         } else {
-            struct ggml_tensor *patches = ggml_graph_get_tensor(gf, "patch_tokens");
-            const float *patch_tokens_data = ggml_get_data_f32(patches);
-            const int h0 = img.rows / model.hparams.patch_size;
-            const int w0 = img.cols / model.hparams.patch_size;
-            const int num_patches = h0 * w0;
-            // Allocate cv::Mat (which allocates and owns memory)
-            cv::Mat patch_tokens(num_patches, model.hparams.hidden_size, CV_32F);
+            fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
+            print_usage(argc, argv, params);
+            exit(0);
+        }
+    }
 
-            // Copy data from ggml tensor into cv::Mat
-            std::memcpy(patch_tokens.data, patch_tokens_data, num_patches * model.hparams.hidden_size * sizeof(float));
+    return true;
+}
 
-            // Store in your output struct
-            output->patch_tokens = patch_tokens;
+std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat &img,
+                                          const dino_params &params) {
+    struct ggml_init_params params0 = {
+        /*.mem_size   =*/ ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead(),
+        /*.mem_buffer =*/ nullptr,
+        /*.no_alloc   =*/ true, // the tensors will be allocated later by ggml_gallocr_alloc_graph()
+    };
+    struct ggml_context *ctx_cgraph = ggml_init(params0);
+    struct ggml_cgraph *gf = build_graph(img.size(), ctx_cgraph, model, params);
+
+    ggml_gallocr_t allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
+    ggml_gallocr_alloc_graph(allocr, gf);
+
+    struct ggml_tensor *input = ggml_graph_get_tensor(gf, "input");
+
+    std::vector<float> planar(img.total() * 3);
+    float *out = planar.data();
+
+    // Split BGR image into channels (OpenCV will do B, G, R)
+    std::vector<cv::Mat> bgr_channels(3);
+    cv::split(img, bgr_channels);
+
+    // Create output Mats for planar format in **RGB order**
+    std::vector<cv::Mat> rgb_planar_channels = {
+        cv::Mat(img.rows, img.cols, CV_32F, out + 0 * img.total()), // R
+        cv::Mat(img.rows, img.cols, CV_32F, out + 1 * img.total()), // G
+        cv::Mat(img.rows, img.cols, CV_32F, out + 2 * img.total()) // B
+    };
+
+    // Copy from BGR channels into RGB-planar layout
+    bgr_channels[2].copyTo(rgb_planar_channels[0]); // R <- from BGR[2]
+    bgr_channels[1].copyTo(rgb_planar_channels[1]); // G <- from BGR[1]
+    bgr_channels[0].copyTo(rgb_planar_channels[2]); // B <- from BGR[0]
+
+    ggml_backend_tensor_set(input, planar.data(), 0, ggml_nbytes(input));
+
+    const struct ggml_tensor *pos_embed = ggml_get_tensor(model.ctx, "embeddings.position_embeddings");
+
+    const std::vector<float> pos_embed_fixed_data = interpolate_pos_embed(
+        img.size(), ggml_get_data_f32(pos_embed), model.hparams);
+
+    struct ggml_tensor *pos_embed_fixed = ggml_graph_get_tensor(gf, "pos_embed_fixed");
+
+    ggml_backend_tensor_set(pos_embed_fixed, pos_embed_fixed_data.data(), 0, ggml_nbytes(pos_embed_fixed));
+    // print_t_f32("pos_embed_fixed", pos_embed_fixed);
+
+    if (ggml_backend_graph_compute(model.backend, gf) != GGML_STATUS_SUCCESS) {
+        fprintf(stderr, "%s: ggml_backend_graph_compute() failed\n", __func__);
+        return {};
+    }
+
+    auto output = std::make_unique<dino_output>();
+
+    if (params.classify) {
+        struct ggml_tensor *probs = ggml_graph_get_tensor(gf, "probs");
+        const float *probs_data = ggml_get_data_f32(probs);
+        std::vector<std::pair<float, int> > predictions;
+        // store probability and index
+        for (int i = 0; i < model.hparams.num_classes; ++i) {
+            predictions.emplace_back(probs_data[i], i);
         }
 
+        // sort in descending order
+        std::sort(predictions.begin(), predictions.end(),
+                  [](const std::pair<float, int> &a, const std::pair<float, int> &b) {
+                      return a.first > b.first;
+                  });
 
-        // free memory
-        ggml_free(ctx_cgraph);
-        ggml_gallocr_free(allocr);
+        fprintf(stderr, "\n");
 
+        // top k predictions
+        std::vector<uint32_t> preds(params.topk);
+        for (int i = 0; i < params.topk && i < predictions.size(); ++i) {
+            printf(" > %s : %.2f\n",
+                   model.hparams.id2label.at(predictions[i].second).c_str(),
+                   predictions[i].first);
+            preds[i] = static_cast<uint32_t>(predictions[i].first);
+        }
 
-        return output;
+        output->preds = preds;
+    } else {
+        struct ggml_tensor *patches = ggml_graph_get_tensor(gf, "patch_tokens");
+        const float *patch_tokens_data = ggml_get_data_f32(patches);
+        const int h0 = img.rows / model.hparams.patch_size;
+        const int w0 = img.cols / model.hparams.patch_size;
+        const int num_patches = h0 * w0;
+        // Allocate cv::Mat (which allocates and owns memory)
+        cv::Mat patch_tokens(num_patches, model.hparams.hidden_size, CV_32F);
+
+        // Copy data from ggml tensor into cv::Mat
+        std::memcpy(patch_tokens.data, patch_tokens_data, num_patches * model.hparams.hidden_size * sizeof(float));
+
+        // Store in your output struct
+        output->patch_tokens = patch_tokens;
     }
+
+
+    // free memory
+    ggml_free(ctx_cgraph);
+    ggml_gallocr_free(allocr);
+
+
+    return output;
+}
