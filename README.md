@@ -198,7 +198,7 @@ options:
 
 ## Benchmark against PyTorch
 
-First experiments on Intel Core i9-14900HX show inference speedups(up to 3x faster for small model, ~1.5-2x faster for the rest) compared to native PyTorch inference.
+First experiments on Intel Core i9-14900HX show inference speedups (up to 3x faster for small model, ~1.5-2x faster for the rest) compared to native PyTorch inference.
 
 ### DINOv2 inference
 
