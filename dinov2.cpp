@@ -732,7 +732,7 @@ void print_usage(int argc, char **argv, const dino_params &params) {
         stderr, "  -c, --classify          whether to classify the image or get backbone PCA features (default: %d)\n",
         params.classify);
     fprintf(
-        stderr, "  -fa, --flash_attn          whether to enable flash_attn (default: %d)\n",
+        stderr, "  -fa, --flash_attn          whether to enable flash_attn, less accurate (default: %d)\n",
         params.enable_flash_attn);
     fprintf(stderr, "  -s SEED, --seed         RNG seed (default: -1)\n");
     fprintf(stderr, "  -e FLOAT, --epsilon     epsilon constant in Layer Norm layers (default: %f)\n", params.eps);
