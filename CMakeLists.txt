@@ -36,7 +36,7 @@ endif ()
 
 
 # dinov2 executable
-add_executable(${PROJECT_NAME} main.cpp dinov2.cpp)
+add_executable(${PROJECT_NAME} classify.cpp dinov2.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
 target_include_directories(${PROJECT_NAME} PUBLIC .)
 
@@ -54,4 +54,4 @@ if (BUILD_QUANTIZE)
     add_executable(quantize quantize.cpp)
     target_link_libraries(quantize PUBLIC ggml)
     target_include_directories(quantize PUBLIC .)
-endif()
+endif ()
