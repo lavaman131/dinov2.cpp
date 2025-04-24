@@ -239,7 +239,7 @@ Additionally compile with OpenMP by specifying the `-fopenmp` flag to the compil
 allowing multithreaded runs. Make sure to also enable multiple threads when running, e.g.:
 
 ```bash
-OMP_NUM_THREADS=4 ./bin/dinov2 -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
+OMP_NUM_THREADS=4 ./bin/inference -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
 ```
 
 ## Run
