@@ -336,58 +336,55 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
     }
 
 
-
     return true;
 }
 
 
-
-
-bool dino_model_quantize(const std::string& fname_inp, const std::string& fname_out, int itype) {
+bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_out, int itype) {
     ggml_type type = (ggml_type) itype;
 
-
-
-    struct ggml_context* tmp_ctx = nullptr;
+    struct ggml_context *tmp_ctx = nullptr;
     struct gguf_init_params gguf_params = {
         /*.no_alloc   =*/ false,
         /*.ctx        =*/ &tmp_ctx,
     };
-    gguf_context* gguf_ctx = gguf_init_from_file(fname_inp.c_str(), gguf_params);
+    gguf_context *gguf_ctx = gguf_init_from_file(fname_inp.c_str(), gguf_params);
     if (!gguf_ctx) {
         fprintf(stderr, "%s: gguf_init_from_file() failed\n", __func__);
         return false;
     }
 
-    gguf_context* ctx = gguf_init_empty();
-
     int num_tensors = gguf_get_n_tensors(gguf_ctx);
-    uint32_t ftype = get_val_u32(gguf_ctx, std::string("ftype").c_str());
 
-    gguf_set_kv(ctx, gguf_ctx);
+    struct gguf_context *save_ctx = gguf_init_empty();
 
-    //model.ctx = ggml_init(model_params);
+    struct ggml_init_params model_params{
+        /*.mem_size   =*/ ggml_tensor_overhead() * num_tensors,
+        /*.mem_buffer =*/ nullptr,
+        /*.no_alloc   =*/ false,
+    };
+    struct ggml_context *model_ctx = ggml_init(model_params);
+
     for (int i = 0; i < num_tensors; i++) {
-        const char* name = gguf_get_tensor_name(gguf_ctx, i);
-        struct ggml_tensor* src = ggml_get_tensor(tmp_ctx, name);
-        struct ggml_tensor* dst = ggml_cpy(tmp_ctx, src, ggml_new_tensor(tmp_ctx, GGML_TYPE_F32, ggml_n_dims(src), src->ne));
+        const char *name = gguf_get_tensor_name(gguf_ctx, i);
+        struct ggml_tensor *src = ggml_get_tensor(tmp_ctx, name);
+        struct ggml_tensor *dst = ggml_dup_tensor(model_ctx, src);
 
-        int64_t n_per_row = dst->ne[0];
-        int64_t nrows = dst->ne[1];
-     
-        ggml_quantize_chunk(type, ggml_get_data_f32(dst), dst, 0, nrows, n_per_row, nullptr);
-        gguf_add_tensor(ctx, dst);
+        int64_t n_per_row = src->ne[0];
+        int64_t nrows = src->ne[1];
+
+        ggml_quantize_chunk(type, ggml_get_data_f32(src), dst->data, 0, nrows, n_per_row, nullptr);
+        gguf_add_tensor(save_ctx, dst);
     }
 
-    if (!gguf_write_to_file(ctx, fname_out.c_str(), false)) {
+
+    if (!gguf_write_to_file(save_ctx, fname_out.c_str(), false)) {
         fprintf(stderr, "failed to write GGUF file\n");
     }
-
 
     gguf_free(gguf_ctx);
 
     return true;
-
 }
 
 // DINOv2 Encoder
