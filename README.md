@@ -19,16 +19,28 @@ existing code from [vit.cpp](https://github.com/staghado/vit.cpp).
     - [Description](#description)
     - [Features](#features)
     - [DINOv2 Overview](#dinov2-overview)
-    - [Quick example](#quick-example)
+      - [Quick example](#quick-example)
+        - [Feature Extraction](#feature-extraction)
+        - [Classification Output](#classification-output)
+      - [Realtime Demo](#realtime-demo)
     - [Convert PyTorch to GGUF](#convert-pytorch-to-gguf)
     - [Build](#build)
+        - [Install OpenCV](#install-opencv)
+          - [Configure Environment Variables](#configure-environment-variables)
         - [Simple build](#simple-build)
+            - [inference.cpp (Classification)](#inferencecpp-classification)
+            - [inference.cpp (Feature Extraction)](#inferencecpp-feature-extraction)
+            - [realtime.cpp (Live Feature Extraction)](#realtimecpp-live-feature-extraction)
         - [Per device optimizations](#per-device-optimizations)
             - [For AMD host processors](#for-amd-host-processors)
         - [Using OpenMP](#using-openmp)
     - [Run](#run)
+      - [inference.cpp](#inferencecpp)
+      - [realtime.cpp](#realtimecpp)
     - [Benchmark against PyTorch](#benchmark-against-pytorch)
         - [DINOv2 inference](#dinov2-inference)
+          - [DINOv2 with Register Tokens](#dinov2-with-register-tokens)
+          - [DINOv2 without Register Tokens](#dinov2-without-register-tokens)
         - [Benchmark on your machine](#benchmark-on-your-machine)
     - [Quantization](#quantization)
         - [Results](#results)
@@ -46,7 +58,7 @@ Todo:
 - 4-bit, 5-bit and 8-bit quantization support.
 
 
-## DINOv2 Overview: 
+## DINOv2 Overview
 
 The implemented architecture is based on the DINOv2 architecture:
 
@@ -54,9 +66,7 @@ The implemented architecture is based on the DINOv2 architecture:
 
 ## Quick example
 
-<details>
-
-
+#### Feature Extraction
 
   <p align="center">
     <img src="assets/tench.jpg" alt="example input" width="50%" height="auto">
@@ -66,7 +76,7 @@ The implemented architecture is based on the DINOv2 architecture:
     <img src="assets/pca_visual.jpg" alt="PCA output" width="50%" height="auto">
   </p>
 
-  <summary>See output</summary>
+#### Classification Output
   <pre>
   $ ./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg 
   main: seed = 42
@@ -92,7 +102,10 @@ The implemented architecture is based on the DINOv2 architecture:
 
 main: graph computation took 349 ms
   </pre>
-</details>
+
+## Realtime Demo
+
+TODO add video
 
 ## Convert PyTorch to GGUF
 
@@ -103,10 +116,12 @@ git clone --recurse-submodules git@github.com:lavaman131/dinov2.cpp.git
 cd dinov2.cpp
 
 uv venv
+
 # for MacOS/Linux
 source .venv/bin/activate
 # for Windows
 .venv\Scripts\activate
+
 uv sync --frozen
 
 # convert the weights to gguf : dinov2 small with patch size of 14 and an image 
@@ -122,20 +137,47 @@ python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-with-registers-s
 
 ## Build
 
-### Simple build
+### Install OpenCV
 
-#### Install OpenCV
+Refer to instructions on the [OpenCV](https://opencv.org/get-started/) website to install OpenCV on your machine.
 
-Refer to instructions on the [OpenCV]((https://opencv.org/get-started/)) website to install OpenCV on your machine.
+<p align="center">
+    <img src="assets/readme-assets/OpenCV-table.png">
+  </p>
 
-Add the `-c` flag when running to return the output predictions. Omitting the flag (by default) will return the patch
+Using this table, pick your Operating System, and choose if you are going to build from source or install a prebuilt version. It is recommended to build from source, as prebuilt versions only support Visual Studio. OpenCV provides precise step by step instructions on how to build from source.
+
+#### Configure Environment Variables
+
+Once you have built OpenCV, you need to configure your environment to locate it. You have two options:
+
+##### Option 1: Set Path in CMakeLists.txt
+Add the following line to your CMakeLists.txt file:
+```cmake
+set(OpenCV_DIR /path/to/your/opencv/build/folder)
+```
+Replace `/path/to/your/opencv/build/folder` with the absolute path to your OpenCV build directory.
+
+##### Option 2: Set System Environment Variables
+Alternatively, configure your system environment variables:
+
+1. Set `OpenCV_DIR` environment variable to the absolute path of your OpenCV build folder
+2. Add the following directories to your system `PATH` variable:
+   - The absolute path to the OpenCV `bin` folder
+   - The absolute path to the OpenCV `lib` folder
+   
+Note: The `bin` and `lib` folders are typically located in the same directory.
+
+### Simple Build
+Add the `-c` flag when running inference.cpp to return the output predictions. Omitting the flag (by default) will return the patch
 tokens.
 
+#### inference.cpp (Classification)
 ```bash
 # on MacOS/Linux 
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
-./bin/dinov2 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/inference -m ../ggml-model-f16.gguf -i ../assets/tench.jpg -c
 ```
 
 ```bash
@@ -143,15 +185,46 @@ cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
 mkdir build ; cd build
 cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
 ninja
-./bin/dinov2.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/inference.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg -c
+```
+#### inference.cpp (Feature Extraction)
+```bash
+# on MacOS/Linux 
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
+./bin/inference -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 
+```bash
+# on Windows
+mkdir build ; cd build
+cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
+ninja
+./bin/inference.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```
+
+#### realtime.cpp (Live Feature Extraction)
+```bash
+# on MacOS/Linux 
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
+./bin/realtime -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```
+
+```bash
+# on Windows
+mkdir build ; cd build
+cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
+ninja
+./bin/realtime.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```
 The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of
 threads equal to the number of available physical cores gives the best performance in terms of speed.
 
 ### Per device optimizations
 
 Generate per-device instructions that work best for the given machine rather than using general CPU instructions.
+
 This can be done by specifying `-march=native` in the compiler flags.
 
 * Multi-threading and vectorization
@@ -160,12 +233,12 @@ This can be done by specifying `-march=native` in the compiler flags.
 #### For AMD host processors
 
 You can use a specialized compiler released by AMD to make full use of your specific processor's architecture.
+
 Read more here : [AMD Optimizing C/C++ and Fortran Compilers (AOCC)](https://www.amd.com/en/developer/aocc.html)
 
 You can follow the given instructions to install the AOCC compiler.
 
-Note : For my AMD Ryzen 7 3700U, the improvements were not very significant but for more recent processors there could
-be a gain in using a specialized compiler.
+Please note that modern processors tend to see the greatest benefits from a specialized compiler, whereas older CPUs may experience little to no performance improvement.
 
 ### Using OpenMP
 
@@ -173,24 +246,36 @@ Additionally compile with OpenMP by specifying the `-fopenmp` flag to the compil
 allowing multithreaded runs. Make sure to also enable multiple threads when running, e.g.:
 
 ```bash
-OMP_NUM_THREADS=4 ./bin/dinov2 -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
+OMP_NUM_THREADS=4 ./bin/inference -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
 ```
 
 ## Run
 
+#### inference.cpp
 ```bash
-usage: ./bin/dinov2 [options]
+usage: ./bin/inference [options]
 
 options:
-    -h, --help              show this help message and exit
-    -m FNAME, --model FNAME model path (default: ../ggml-model-f16.bin)
-    -i FNAME, --inp FNAME   input file (default: ../assets/tench.jpg)
-    -o FNAME, --out         output file path (default: pca_visual.jpg)
-    -k N, --topk N          top k classes to print (default: 5)
-    -t N, --threads N       number of threads to use during computation (default: 4)
-    -c, --classify          whether to classify the image or get backbone features
-    -s SEED, --seed SEED    RNG seed (default: 42)
-    -e FLOAT, --epsilon     epsilon (default: 0.000001)
+  -h, --help              show this help message and exit
+  -m FNAME, --model       model path (default: ../ggml-model-f16.gguf)
+  -i FNAME, --inp         input file (default: ../assets/tench.jpg)
+  -o FNAME, --out         output file for backbone PCA features (default: pca_visual.png)
+  -k N, --topk            top k classes to print (default: 5)
+  -t N, --threads         number of threads to use during computation (default: 4)
+  -c, --classify          whether to classify the image or get backbone PCA features (default: 0)
+  -fa, --flash_attn       whether to enable flash_attn, less accurate (default: 0)
+```
+
+#### realtime.cpp
+```bash
+usage: ./bin/realtime [options]
+
+options:
+  -h, --help              show this help message and exit
+  -m FNAME, --model       model path (default: ../ggml-model-f16.gguf)
+  -t N, --threads         number of threads to use during computation (default: 4)
+  -fa, --flash_attn       whether to enable flash_attn, less accurate (default: 0)
+  -cid, --camera_id       the idea of the camera for realtime backbone PCA feature streaming (default: 0)
 ```
 
 ## Benchmark against PyTorch
@@ -253,7 +338,7 @@ used by PyTorch.
 Todo:
 Quantization is not currently supported for dinov2.cpp
 
-`vit.cpp` supports many quantization strategies from ggml such as q4_0, q4_1, q5_0, q5_1 and q8_0 types.
+`dinov2.cpp` supports many quantization strategies from ggml such as q4_0, q4_1, q5_0, q5_1 and q8_0 types.
 You can quantize a model in F32 (the patch embedding is in F16) to one of these types by using the `./bin/quantize`
 binary.
 

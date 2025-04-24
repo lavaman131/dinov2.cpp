@@ -28,21 +28,22 @@ add_subdirectory(ggml)
 # Find OpenCV, you may need to set OpenCV_DIR variable
 # to the absolute path to the directory containing OpenCVConfig.cmake file
 # via the command line or GUI
+
+# OPTIONAL: set(OpenCV_DIR {PATH TO BUILD FOLDER HERE})
 find_package(OpenCV REQUIRED)
 
 if (NOT OpenCV_FOUND)
     message(FATAL_ERROR "OpenCV not found. Please set OpenCV_DIR to the directory containing OpenCVConfig.cmake.")
 endif ()
 
-# realtime executable
-option(BUILD_REALTIME "Build the realtime executable" ON)
-# quantize executable
-option(BUILD_QUANTIZE "Build the quantize executable" ON)
 
 # dinov2 executable
 add_executable(inference inference.cpp dinov2.cpp)
 target_link_libraries(inference PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
 target_include_directories(inference PUBLIC .)
+
+# realtime executable
+option(BUILD_REALTIME "Build the realtime executable" ON)
 
 if (BUILD_REALTIME)
     add_executable(realtime realtime.cpp dinov2.cpp
@@ -52,7 +53,7 @@ if (BUILD_REALTIME)
 endif ()
 
 if (BUILD_QUANTIZE)
-    add_executable(quantize quantize.cpp dinov2.cpp)
-    target_link_libraries(quantize PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
+    add_executable(quantize quantize.cpp)
+    target_link_libraries(quantize PUBLIC ggml)
     target_include_directories(quantize PUBLIC .)
 endif ()

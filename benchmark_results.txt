@@ -1,0 +1,7 @@
+Benchmark results summary:
+| Model  | Speed (ms)    | Mem (MB)          |
+| :----: | :-----------: | :---------------: |
+|   small |    5 ms     |   14 MB        |
+|   base |    6 ms     |   15 MB        |
+|   large |    6 ms     |   14 MB        |
+|   giant |    6 ms     |   14 MB        |
