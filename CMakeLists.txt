@@ -34,14 +34,15 @@ if (NOT OpenCV_FOUND)
     message(FATAL_ERROR "OpenCV not found. Please set OpenCV_DIR to the directory containing OpenCVConfig.cmake.")
 endif ()
 
+# realtime executable
+option(BUILD_REALTIME "Build the realtime executable" ON)
+# quantize executable
+option(BUILD_QUANTIZE "Build the quantize executable" ON)
 
 # dinov2 executable
 add_executable(classify classify.cpp dinov2.cpp)
 target_link_libraries(classify PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
 target_include_directories(classify PUBLIC .)
-
-# realtime executable
-option(BUILD_REALTIME "Build the realtime executable" ON)
 
 if (BUILD_REALTIME)
     add_executable(realtime realtime.cpp dinov2.cpp
