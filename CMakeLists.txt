@@ -40,9 +40,9 @@ option(BUILD_REALTIME "Build the realtime executable" ON)
 option(BUILD_QUANTIZE "Build the quantize executable" ON)
 
 # dinov2 executable
-add_executable(classify classify.cpp dinov2.cpp)
-target_link_libraries(classify PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
-target_include_directories(classify PUBLIC .)
+add_executable(inference inference.cpp dinov2.cpp)
+target_link_libraries(inference PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
+target_include_directories(inference PUBLIC .)
 
 if (BUILD_REALTIME)
     add_executable(realtime realtime.cpp dinov2.cpp
