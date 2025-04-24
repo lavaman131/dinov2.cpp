@@ -133,9 +133,11 @@ python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-with-registers-s
 
 ### Install OpenCV
 
-Refer to instructions on the [OpenCV]((https://opencv.org/get-started/)) website to install OpenCV on your machine.
+Refer to instructions on the [OpenCV](https://opencv.org/get-started/) website to install OpenCV on your machine.
 
-![alt text](image.png)
+<p align="center">
+    <img src="assets/readme-assets/OpenCV-table.png">
+  </p>
 
 Using this table, pick your Operating System, and choose if you are going to build from source or install a prebuilt version. It is recommended to build from source, as prebuilt versions only support Visual Studio. OpenCV provides precise step by step instructions on how to build from source.
 
