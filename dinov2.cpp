@@ -341,7 +341,7 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
 
 
 bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_out, int itype) {
-    ggml_type type = (ggml_type) itype;
+    const auto type = static_cast<ggml_type>(itype);
 
     struct ggml_context *tmp_ctx = nullptr;
     struct gguf_init_params gguf_params = {
@@ -349,6 +349,7 @@ bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_
         /*.ctx        =*/ &tmp_ctx,
     };
     gguf_context *gguf_ctx = gguf_init_from_file(fname_inp.c_str(), gguf_params);
+
     if (!gguf_ctx) {
         fprintf(stderr, "%s: gguf_init_from_file() failed\n", __func__);
         return false;
@@ -359,22 +360,28 @@ bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_
     struct gguf_context *save_ctx = gguf_init_empty();
 
     struct ggml_init_params model_params{
-        /*.mem_size   =*/ ggml_tensor_overhead() * num_tensors,
+        /*.mem_size   =*/ 70000000,
         /*.mem_buffer =*/ nullptr,
         /*.no_alloc   =*/ false,
     };
     struct ggml_context *model_ctx = ggml_init(model_params);
 
+    size_t curr_size = 0;
+
+    bool quantize = false;
     for (int i = 0; i < num_tensors; i++) {
         const char *name = gguf_get_tensor_name(gguf_ctx, i);
         struct ggml_tensor *src = ggml_get_tensor(tmp_ctx, name);
         struct ggml_tensor *dst = ggml_dup_tensor(model_ctx, src);
+        ggml_set_name(dst, name);
 
-        int64_t n_per_row = src->ne[0];
-        int64_t nrows = src->ne[1];
+        quantize &= (ggml_n_dims(dst) == 2);
 
-        ggml_quantize_chunk(type, ggml_get_data_f32(src), dst->data, 0, nrows, n_per_row, nullptr);
-        gguf_add_tensor(save_ctx, dst);
+        if (quantize) {
+            int64_t n_per_row = src->ne[0];
+            int64_t nrows = src->ne[1];
+            ggml_quantize_chunk(type, (float *) (src->data), dst->data, 0, nrows, n_per_row, nullptr);
+        }
     }
 
 
@@ -383,6 +390,8 @@ bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_
     }
 
     gguf_free(gguf_ctx);
+    gguf_free(save_ctx);
+    ggml_free(model_ctx);
 
     return true;
 }
