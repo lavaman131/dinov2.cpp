@@ -20,6 +20,7 @@ existing code from [vit.cpp](https://github.com/staghado/vit.cpp).
     - [Features](#features)
     - [DINOv2 Overview](#dinov2-overview)
       - [Quick example](#quick-example)
+        - [Feature Extraction](#feature-extraction)
         - [Classification Output](#classification-output)
       - [Realtime Demo](#realtime-demo)
     - [Convert PyTorch to GGUF](#convert-pytorch-to-gguf)
@@ -63,6 +64,8 @@ The implemented architecture is based on the DINOv2 architecture:
 - [DINOv2: Learning Robust Visual Features without Supervision](https://arxiv.org/abs/2304.07193)
 
 ## Quick example
+
+#### Feature Extraction
 
   <p align="center">
     <img src="assets/tench.jpg" alt="example input" width="50%" height="auto">
