@@ -26,6 +26,7 @@ existing code from [vit.cpp](https://github.com/staghado/vit.cpp).
     - [Convert PyTorch to GGUF](#convert-pytorch-to-gguf)
     - [Build](#build)
         - [Install OpenCV](#install-opencv)
+          - [Configure Environment Variables](#configure-environment-variables)
         - [Simple build](#simple-build)
             - [inference.cpp (Classification)](#inferencecpp-classification)
             - [inference.cpp (Feature Extraction)](#inferencecpp-feature-extraction)
@@ -146,16 +147,18 @@ Refer to instructions on the [OpenCV](https://opencv.org/get-started/) website t
 
 Using this table, pick your Operating System, and choose if you are going to build from source or install a prebuilt version. It is recommended to build from source, as prebuilt versions only support Visual Studio. OpenCV provides precise step by step instructions on how to build from source.
 
+#### Configure Environment Variables
+
 Once you have built OpenCV, you need to configure your environment to locate it. You have two options:
 
-#### Option 1: Set Path in CMakeLists.txt
+##### Option 1: Set Path in CMakeLists.txt
 Add the following line to your CMakeLists.txt file:
 ```cmake
 set(OpenCV_DIR /path/to/your/opencv/build/folder)
 ```
 Replace `/path/to/your/opencv/build/folder` with the absolute path to your OpenCV build directory.
 
-#### Option 2: Set System Environment Variables
+##### Option 2: Set System Environment Variables
 Alternatively, configure your system environment variables:
 
 1. Set `OpenCV_DIR` environment variable to the absolute path of your OpenCV build folder
