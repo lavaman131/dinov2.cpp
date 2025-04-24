@@ -163,7 +163,7 @@ Alternatively, configure your system environment variables:
 Note: The `bin` and `lib` folders are typically located in the same directory.
 
 ### Simple Build
-Add the `-c` flag when running to return the output predictions. Omitting the flag (by default) will return the patch
+Add the `-c` flag when running inference.cpp to return the output predictions. Omitting the flag (by default) will return the patch
 tokens.
 
 #### inference.cpp (Classification)
@@ -218,6 +218,7 @@ threads equal to the number of available physical cores gives the best performan
 ### Per device optimizations
 
 Generate per-device instructions that work best for the given machine rather than using general CPU instructions.
+
 This can be done by specifying `-march=native` in the compiler flags.
 
 * Multi-threading and vectorization
@@ -226,12 +227,12 @@ This can be done by specifying `-march=native` in the compiler flags.
 #### For AMD host processors
 
 You can use a specialized compiler released by AMD to make full use of your specific processor's architecture.
+
 Read more here : [AMD Optimizing C/C++ and Fortran Compilers (AOCC)](https://www.amd.com/en/developer/aocc.html)
 
 You can follow the given instructions to install the AOCC compiler.
 
-Note : For my AMD Ryzen 7 3700U, the improvements were not very significant but for more recent processors there could
-be a gain in using a specialized compiler.
+Please note that modern processors tend to see the greatest benefits from a specialized compiler, whereas older CPUs may experience little to no performance improvement.
 
 ### Using OpenMP
 
