@@ -359,29 +359,24 @@ bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_
 
     struct gguf_context *save_ctx = gguf_init_empty();
 
-    struct ggml_init_params model_params{
-        /*.mem_size   =*/ 70000000,
-        /*.mem_buffer =*/ nullptr,
-        /*.no_alloc   =*/ false,
-    };
-    struct ggml_context *model_ctx = ggml_init(model_params);
-
-    size_t curr_size = 0;
+    gguf_set_kv(save_ctx, gguf_ctx);
 
     bool quantize = false;
+    int64_t n_per_row = 0;
+    int64_t nrows = 0;
     for (int i = 0; i < num_tensors; i++) {
         const char *name = gguf_get_tensor_name(gguf_ctx, i);
         struct ggml_tensor *src = ggml_get_tensor(tmp_ctx, name);
-        struct ggml_tensor *dst = ggml_dup_tensor(model_ctx, src);
-        ggml_set_name(dst, name);
 
-        quantize &= (ggml_n_dims(dst) == 2);
+        quantize &= (ggml_n_dims(src) == 2);
 
         if (quantize) {
-            int64_t n_per_row = src->ne[0];
-            int64_t nrows = src->ne[1];
-            ggml_quantize_chunk(type, (float *) (src->data), dst->data, 0, nrows, n_per_row, nullptr);
+            n_per_row = src->ne[0];
+            nrows = src->ne[1];
+            ggml_quantize_chunk(type, (float *) (src->data), src->data, 0, nrows, n_per_row, nullptr);
         }
+
+        gguf_add_tensor(save_ctx, src);
     }
 
 
@@ -391,7 +386,6 @@ bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_
 
     gguf_free(gguf_ctx);
     gguf_free(save_ctx);
-    ggml_free(model_ctx);
 
     return true;
 }
