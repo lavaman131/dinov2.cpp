@@ -28,6 +28,8 @@ add_subdirectory(ggml)
 # Find OpenCV, you may need to set OpenCV_DIR variable
 # to the absolute path to the directory containing OpenCVConfig.cmake file
 # via the command line or GUI
+
+# OPTIONAL: set(OpenCV_DIR {PATH TO BUILD FOLDER HERE})
 find_package(OpenCV REQUIRED)
 
 if (NOT OpenCV_FOUND)
