@@ -46,7 +46,7 @@ Todo:
 - 4-bit, 5-bit and 8-bit quantization support.
 
 
-## DINOv2 Overview: 
+## DINOv2 Overview
 
 The implemented architecture is based on the DINOv2 architecture:
 
@@ -62,7 +62,7 @@ The implemented architecture is based on the DINOv2 architecture:
     <img src="assets/pca_visual.jpg" alt="PCA output" width="50%" height="auto">
   </p>
 
-  ### See output
+#### Classification Output
   <pre>
   $ ./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg 
   main: seed = 42
@@ -88,6 +88,10 @@ The implemented architecture is based on the DINOv2 architecture:
 
 main: graph computation took 349 ms
   </pre>
+
+## Realtime Demo
+
+TODO add video
 
 ## Convert PyTorch to GGUF
 
@@ -117,20 +121,24 @@ python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-with-registers-s
 
 ## Build
 
-### Simple build
-
-#### Install OpenCV
+### Install OpenCV
 
 Refer to instructions on the [OpenCV]((https://opencv.org/get-started/)) website to install OpenCV on your machine.
 
+![alt text](image.png)
+
+Using this table, pick your Operating System, and choose if you are going to build from source or install a prebuilt version. It is recommended to build from source, as prebuilt versions only support Visual Studio. OpenCV provides precise step by step instructions on how to build from source.
+
+### Simple Build
 Add the `-c` flag when running to return the output predictions. Omitting the flag (by default) will return the patch
 tokens.
 
+#### inference.cpp (Classification)
 ```bash
 # on MacOS/Linux 
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
-./bin/dinov2 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/inference -m ../ggml-model-f16.gguf -i ../assets/tench.jpg -c
 ```
 
 ```bash
@@ -138,9 +146,39 @@ cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
 mkdir build ; cd build
 cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
 ninja
-./bin/dinov2.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/inference.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg -c
+```
+#### inference.cpp (Feature Extraction)
+```bash
+# on MacOS/Linux 
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
+./bin/inference -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
 ```
 
+```bash
+# on Windows
+mkdir build ; cd build
+cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
+ninja
+./bin/inference.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```
+
+#### realtime.cpp (Live Feature Extraction)
+```bash
+# on MacOS/Linux 
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
+./bin/realtime -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```
+
+```bash
+# on Windows
+mkdir build ; cd build
+cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
+ninja
+./bin/realtime.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+```
 The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of
 threads equal to the number of available physical cores gives the best performance in terms of speed.
 
@@ -173,19 +211,31 @@ OMP_NUM_THREADS=4 ./bin/dinov2 -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.
 
 ## Run
 
+#### inference.cpp
 ```bash
-usage: ./bin/dinov2 [options]
+usage: ./bin/inference [options]
 
 options:
-    -h, --help              show this help message and exit
-    -m FNAME, --model FNAME model path (default: ../ggml-model-f16.bin)
-    -i FNAME, --inp FNAME   input file (default: ../assets/tench.jpg)
-    -o FNAME, --out         output file path (default: pca_visual.jpg)
-    -k N, --topk N          top k classes to print (default: 5)
-    -t N, --threads N       number of threads to use during computation (default: 4)
-    -c, --classify          whether to classify the image or get backbone features
-    -s SEED, --seed SEED    RNG seed (default: 42)
-    -e FLOAT, --epsilon     epsilon (default: 0.000001)
+  -h, --help              show this help message and exit
+  -m FNAME, --model       model path (default: ../ggml-model-f16.gguf)
+  -i FNAME, --inp         input file (default: ../assets/tench.jpg)
+  -o FNAME, --out         output file for backbone PCA features (default: pca_visual.png)
+  -k N, --topk            top k classes to print (default: 5)
+  -t N, --threads         number of threads to use during computation (default: 4)
+  -c, --classify          whether to classify the image or get backbone PCA features (default: 0)
+  -fa, --flash_attn       whether to enable flash_attn, less accurate (default: 0)
+```
+
+#### realtime.cpp
+```bash
+usage: ./bin/realtime [options]
+
+options:
+  -h, --help              show this help message and exit
+  -m FNAME, --model       model path (default: ../ggml-model-f16.gguf)
+  -t N, --threads         number of threads to use during computation (default: 4)
+  -fa, --flash_attn       whether to enable flash_attn, less accurate (default: 0)
+  -cid, --camera_id       the idea of the camera for realtime backbone PCA feature streaming (default: 0)
 ```
 
 ## Benchmark against PyTorch
