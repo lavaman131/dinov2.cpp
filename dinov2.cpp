@@ -4,8 +4,10 @@
 #include "ggml.h"
 #include "ggml-cpu.h"
 #include "ggml-alloc.h"
+#include "gguf.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <cassert>
@@ -321,6 +323,7 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
         model.tensors[name] = dst;
     }
 
+
     gguf_free(gguf_ctx);
 
     model.buffer = ggml_backend_alloc_ctx_tensors(model.ctx, model.backend);
@@ -333,7 +336,58 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
     }
 
 
+
     return true;
+}
+
+
+
+
+bool dino_model_quantize(const std::string& fname_inp, const std::string& fname_out, int itype) {
+    ggml_type type = (ggml_type) itype;
+
+
+
+    struct ggml_context* tmp_ctx = nullptr;
+    struct gguf_init_params gguf_params = {
+        /*.no_alloc   =*/ false,
+        /*.ctx        =*/ &tmp_ctx,
+    };
+    gguf_context* gguf_ctx = gguf_init_from_file(fname_inp.c_str(), gguf_params);
+    if (!gguf_ctx) {
+        fprintf(stderr, "%s: gguf_init_from_file() failed\n", __func__);
+        return false;
+    }
+
+    gguf_context* ctx = gguf_init_empty();
+
+    int num_tensors = gguf_get_n_tensors(gguf_ctx);
+    uint32_t ftype = get_val_u32(gguf_ctx, std::string("ftype").c_str());
+
+    gguf_set_kv(ctx, gguf_ctx);
+
+    //model.ctx = ggml_init(model_params);
+    for (int i = 0; i < num_tensors; i++) {
+        const char* name = gguf_get_tensor_name(gguf_ctx, i);
+        struct ggml_tensor* src = ggml_get_tensor(tmp_ctx, name);
+        struct ggml_tensor* dst = ggml_cpy(tmp_ctx, src, ggml_new_tensor(tmp_ctx, GGML_TYPE_F32, ggml_n_dims(src), src->ne));
+
+        int64_t n_per_row = dst->ne[0];
+        int64_t nrows = dst->ne[1];
+     
+        ggml_quantize_chunk(type, ggml_get_data_f32(dst), dst, 0, nrows, n_per_row, nullptr);
+        gguf_add_tensor(ctx, dst);
+    }
+
+    if (!gguf_write_to_file(ctx, fname_out.c_str(), false)) {
+        fprintf(stderr, "failed to write GGUF file\n");
+    }
+
+
+    gguf_free(gguf_ctx);
+
+    return true;
+
 }
 
 // DINOv2 Encoder
@@ -885,3 +939,6 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
 
     return output;
 }
+
+
+
