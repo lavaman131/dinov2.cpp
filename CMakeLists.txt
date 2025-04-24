@@ -42,18 +42,18 @@ add_executable(inference inference.cpp dinov2.cpp)
 target_link_libraries(inference PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
 target_include_directories(inference PUBLIC .)
 
-# realtime executable
+option(BUILD_QUANTIZE "Build the quantization executable" ON)
 option(BUILD_REALTIME "Build the realtime executable" ON)
 
+
 if (BUILD_REALTIME)
-    add_executable(realtime realtime.cpp dinov2.cpp
-            realtime.h)
+    add_executable(realtime realtime.cpp dinov2.cpp)
     target_link_libraries(realtime PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
     target_include_directories(realtime PUBLIC .)
 endif ()
 
 if (BUILD_QUANTIZE)
-    add_executable(quantize quantize.cpp)
-    target_link_libraries(quantize PUBLIC ggml)
+    add_executable(quantize quantize.cpp dinov2.cpp)
+    target_link_libraries(quantize PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
     target_include_directories(quantize PUBLIC .)
 endif ()
