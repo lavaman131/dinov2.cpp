@@ -61,7 +61,7 @@ struct dino_params {
     bool classify = false;
     std::string model = "../ggml-model-f16.gguf"; // model path
     std::string fname_inp = "../assets/tench.jpg"; // image path
-    std::string image_out = "pca_visual.png"; // output of pca visualization (if used)
+    std::string image_out = "pca_visual.jpg"; // output of pca visualization (if used)
     float eps = 1e-6f; // epsilon used in LN
 };
 
@@ -112,3 +112,5 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
 void print_usage(int argc, char **argv, const dino_params &params);
 
 bool dino_params_parse(int argc, char **argv, dino_params &params);
+
+bool dino_model_quantize(const std::string& fname_inp, const std::string& fname_out, int itype);

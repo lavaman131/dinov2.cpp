@@ -4,8 +4,10 @@
 #include "ggml.h"
 #include "ggml-cpu.h"
 #include "ggml-alloc.h"
+#include "gguf.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <cassert>
@@ -321,6 +323,7 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
         model.tensors[name] = dst;
     }
 
+
     gguf_free(gguf_ctx);
 
     model.buffer = ggml_backend_alloc_ctx_tensors(model.ctx, model.backend);
@@ -332,6 +335,57 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
         ggml_backend_tensor_set(cur, ggml_get_data(src), 0, n_size);
     }
 
+
+    return true;
+}
+
+
+bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_out, int itype) {
+    const auto type = static_cast<ggml_type>(itype);
+
+    struct ggml_context *tmp_ctx = nullptr;
+    struct gguf_init_params gguf_params = {
+        /*.no_alloc   =*/ false,
+        /*.ctx        =*/ &tmp_ctx,
+    };
+    gguf_context *gguf_ctx = gguf_init_from_file(fname_inp.c_str(), gguf_params);
+
+    if (!gguf_ctx) {
+        fprintf(stderr, "%s: gguf_init_from_file() failed\n", __func__);
+        return false;
+    }
+
+    int num_tensors = gguf_get_n_tensors(gguf_ctx);
+
+    struct gguf_context *save_ctx = gguf_init_empty();
+
+    gguf_set_kv(save_ctx, gguf_ctx);
+
+    bool quantize = false;
+    int64_t n_per_row = 0;
+    int64_t nrows = 0;
+    for (int i = 0; i < num_tensors; i++) {
+        const char *name = gguf_get_tensor_name(gguf_ctx, i);
+        struct ggml_tensor *src = ggml_get_tensor(tmp_ctx, name);
+
+        quantize &= (ggml_n_dims(src) == 2);
+
+        if (quantize) {
+            n_per_row = src->ne[0];
+            nrows = src->ne[1];
+            ggml_quantize_chunk(type, (float *) (src->data), src->data, 0, nrows, n_per_row, nullptr);
+        }
+
+        gguf_add_tensor(save_ctx, src);
+    }
+
+
+    if (!gguf_write_to_file(save_ctx, fname_out.c_str(), false)) {
+        fprintf(stderr, "failed to write GGUF file\n");
+    }
+
+    gguf_free(gguf_ctx);
+    gguf_free(save_ctx);
 
     return true;
 }
@@ -885,3 +939,6 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
 
     return output;
 }
+
+
+
