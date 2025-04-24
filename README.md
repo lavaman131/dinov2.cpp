@@ -112,10 +112,12 @@ git clone --recurse-submodules git@github.com:lavaman131/dinov2.cpp.git
 cd dinov2.cpp
 
 uv venv
+
 # for MacOS/Linux
 source .venv/bin/activate
 # for Windows
 .venv\Scripts\activate
+
 uv sync --frozen
 
 # convert the weights to gguf : dinov2 small with patch size of 14 and an image 
@@ -140,6 +142,25 @@ Refer to instructions on the [OpenCV](https://opencv.org/get-started/) website t
   </p>
 
 Using this table, pick your Operating System, and choose if you are going to build from source or install a prebuilt version. It is recommended to build from source, as prebuilt versions only support Visual Studio. OpenCV provides precise step by step instructions on how to build from source.
+
+Once you have built OpenCV, you need to configure your environment to locate it. You have two options:
+
+#### Option 1: Set Path in CMakeLists.txt
+Add the following line to your CMakeLists.txt file:
+```cmake
+set(OpenCV_DIR /path/to/your/opencv/build/folder)
+```
+Replace `/path/to/your/opencv/build/folder` with the absolute path to your OpenCV build directory.
+
+#### Option 2: Set System Environment Variables
+Alternatively, configure your system environment variables:
+
+1. Set `OpenCV_DIR` environment variable to the absolute path of your OpenCV build folder
+2. Add the following directories to your system `PATH` variable:
+   - The absolute path to the OpenCV `bin` folder
+   - The absolute path to the OpenCV `lib` folder
+   
+Note: The `bin` and `lib` folders are typically located in the same directory.
 
 ### Simple Build
 Add the `-c` flag when running to return the output predictions. Omitting the flag (by default) will return the patch
@@ -310,7 +331,7 @@ used by PyTorch.
 Todo:
 Quantization is not currently supported for dinov2.cpp
 
-`vit.cpp` supports many quantization strategies from ggml such as q4_0, q4_1, q5_0, q5_1 and q8_0 types.
+`dinov2.cpp` supports many quantization strategies from ggml such as q4_0, q4_1, q5_0, q5_1 and q8_0 types.
 You can quantize a model in F32 (the patch embedding is in F16) to one of these types by using the `./bin/quantize`
 binary.
 
