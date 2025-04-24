@@ -36,9 +36,9 @@ endif ()
 
 
 # dinov2 executable
-add_executable(${PROJECT_NAME} classify.cpp dinov2.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
-target_include_directories(${PROJECT_NAME} PUBLIC .)
+add_executable(classify classify.cpp dinov2.cpp)
+target_link_libraries(classify PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
+target_include_directories(classify PUBLIC .)
 
 # realtime executable
 option(BUILD_REALTIME "Build the realtime executable" ON)
