@@ -30,7 +30,6 @@ add_subdirectory(ggml)
 # via the command line or GUI
 
 # OPTIONAL: set(OpenCV_DIR {PATH TO BUILD FOLDER HERE})
-set(OpenCV_DIR /home/zgentile/build)
 find_package(OpenCV REQUIRED)
 
 if (NOT OpenCV_FOUND)
@@ -39,9 +38,9 @@ endif ()
 
 
 # dinov2 executable
-add_executable(classify classify.cpp dinov2.cpp)
-target_link_libraries(classify PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
-target_include_directories(classify PUBLIC .)
+add_executable(inference inference.cpp dinov2.cpp)
+target_link_libraries(inference PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
+target_include_directories(inference PUBLIC .)
 
 # realtime executable
 option(BUILD_REALTIME "Build the realtime executable" ON)
