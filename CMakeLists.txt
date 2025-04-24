@@ -30,6 +30,7 @@ add_subdirectory(ggml)
 # via the command line or GUI
 
 # OPTIONAL: set(OpenCV_DIR {PATH TO BUILD FOLDER HERE})
+set(OpenCV_DIR /home/zgentile/build)
 find_package(OpenCV REQUIRED)
 
 if (NOT OpenCV_FOUND)

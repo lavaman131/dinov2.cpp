@@ -54,10 +54,6 @@ The implemented architecture is based on the DINOv2 architecture:
 
 ## Quick example
 
-<details>
-
-
-
   <p align="center">
     <img src="assets/tench.jpg" alt="example input" width="50%" height="auto">
   </p>
@@ -66,7 +62,7 @@ The implemented architecture is based on the DINOv2 architecture:
     <img src="assets/pca_visual.jpg" alt="PCA output" width="50%" height="auto">
   </p>
 
-  <summary>See output</summary>
+  ### See output
   <pre>
   $ ./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg 
   main: seed = 42
@@ -92,7 +88,6 @@ The implemented architecture is based on the DINOv2 architecture:
 
 main: graph computation took 349 ms
   </pre>
-</details>
 
 ## Convert PyTorch to GGUF
 
