@@ -18,20 +18,19 @@
 #include <regex>
 #include <iostream>
 
-#include <inttypes.h> 
+#include <inttypes.h>
 
 
-int main(int argc, char** argv) {
-
+int main(int argc, char **argv) {
     const std::string fname_inp = argv[1];
     const std::string fname_out = argv[2];
 
-    const int itype = std::atoi(argv[3]);
+    const auto itype = std::atoi(argv[3]);
 
     if (!dino_model_quantize(fname_inp, fname_out, itype)) {
         fprintf(stderr, "%s: failed to quantize model from '%s'\n", __func__, fname_inp.c_str());
         return 1;
     }
 
-    return 0;    
+    return 0;
 }

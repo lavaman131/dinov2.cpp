@@ -7,6 +7,7 @@
 #include "gguf.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#include <regex>
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -223,6 +224,16 @@ std::vector<float> interpolate_pos_embed(
     return pos_embed_new;
 }
 
+bool do_quantize(const char *name, const struct ggml_tensor *tensor) {
+    bool quantize = false;
+    if (std::regex_match(name, std::regex(PATTERN)))
+        quantize = true;
+
+    // quantize only 2D tensors
+    quantize &= (ggml_n_dims(tensor) == 2);
+
+    return quantize;
+}
 
 // load the model's weights from a file following the ggml format(gguf)
 bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_model &model, const dino_params &params) {
@@ -321,6 +332,7 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
         struct ggml_tensor *dst = ggml_dup_tensor(model.ctx, src);
         ggml_set_name(dst, name);
         model.tensors[name] = dst;
+        std::cout << "i: " << i << ", name: " << name << ", type: " << ggml_type_name(dst->type) << std::endl;
     }
 
 
@@ -341,7 +353,7 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
 
 
 bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_out, int itype) {
-    const auto type = static_cast<ggml_type>(itype);
+    const auto new_type = static_cast<ggml_type>(itype);
 
     struct ggml_context *tmp_ctx = nullptr;
     struct gguf_init_params gguf_params = {
@@ -350,42 +362,64 @@ bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_
     };
     gguf_context *gguf_ctx = gguf_init_from_file(fname_inp.c_str(), gguf_params);
 
+
     if (!gguf_ctx) {
         fprintf(stderr, "%s: gguf_init_from_file() failed\n", __func__);
         return false;
     }
 
-    int num_tensors = gguf_get_n_tensors(gguf_ctx);
+    const int num_tensors = gguf_get_n_tensors(gguf_ctx);
 
-    struct gguf_context *save_ctx = gguf_init_empty();
+    gguf_context *gguf_save = gguf_init_empty();
 
-    gguf_set_kv(save_ctx, gguf_ctx);
+    gguf_set_kv(gguf_save, gguf_ctx);
+
+    gguf_set_val_u32(gguf_save, "ftype", itype);
 
     bool quantize = false;
     int64_t n_per_row = 0;
     int64_t nrows = 0;
+    std::vector<float> work;
+
     for (int i = 0; i < num_tensors; i++) {
         const char *name = gguf_get_tensor_name(gguf_ctx, i);
         struct ggml_tensor *src = ggml_get_tensor(tmp_ctx, name);
 
-        quantize &= (ggml_n_dims(src) == 2);
+        quantize = do_quantize(name, src);
+
+        gguf_add_tensor(gguf_save, src);
 
         if (quantize) {
             n_per_row = src->ne[0];
             nrows = src->ne[1];
-            ggml_quantize_chunk(type, (float *) (src->data), src->data, 0, nrows, n_per_row, nullptr);
-        }
+            work.resize(ggml_nelements(src));
+            // std::cout << name << " " << std::endl;
+            // std::cout << src->type << " " << std::endl;
+            // if (src->type != GGML_TYPE_F32) {
+            //     auto *ptr = static_cast<ggml_fp16_t *>(ggml_get_data(src));
+            //     float data = ggml_compute_fp16_to_fp32(*ptr);
+            //     *ptr = ggml_compute_fp32_to_fp16(data);
+            // }
+            std::vector<float> hist_cur(1 << 4, 0);
+            const size_t new_size = ggml_quantize_chunk(new_type, ggml_get_data_f32(src), work.data(), 0, nrows,
+                                                        n_per_row,
+                                                        hist_cur.data());
+            if (!ggml_validate_row_data(new_type, work.data(), new_size)) {
+                throw std::runtime_error("quantized data validation failed");
+            }
 
-        gguf_add_tensor(save_ctx, src);
+            // gguf_set_tensor_type(gguf_save, name, new_type); // [1, 1370, 384]
+            // gguf_set_tensor_data(gguf_save, name, work.data());
+        }
     }
 
 
-    if (!gguf_write_to_file(save_ctx, fname_out.c_str(), false)) {
+    if (!gguf_write_to_file(gguf_save, fname_out.c_str(), false)) {
         fprintf(stderr, "failed to write GGUF file\n");
     }
 
     gguf_free(gguf_ctx);
-    gguf_free(save_ctx);
+    gguf_free(gguf_save);
 
     return true;
 }
@@ -579,10 +613,12 @@ void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
     struct ggml_tensor *cur = ggml_conv_2d_sk_p0(
         ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.weight"), input);
 
+
     cur = ggml_add_inplace(ctx_cgraph,
-                           cur,
                            ggml_repeat(ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.bias"),
-                                       cur)); // (37, 37, 768, 1)
+                                       cur), cur); // (37, 37, 768, 1)
+
+
     cur = ggml_cont(ctx_cgraph,
                     ggml_permute(ctx_cgraph, cur, 1, 2, 0, 3)); // (37, 768, 37, 1)
     //
@@ -603,6 +639,7 @@ void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
     struct ggml_tensor *pos_embed_fixed = ggml_new_tensor_3d(ctx_cgraph, GGML_TYPE_F32, model.hparams.hidden_size,
                                                              num_patches + 1, 1
     );
+
     ggml_set_name(pos_embed_fixed, "pos_embed_fixed");
 
     cur = ggml_concat(ctx_cgraph, model.tensors.at("embeddings.cls_token"), cur, 1);

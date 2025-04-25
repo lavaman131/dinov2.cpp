@@ -165,6 +165,20 @@ def save_tensor(
            }
         else 0
     )
+
+    if ftype == 1:
+        if tensor.ndim != 1 and name not in {
+            "embeddings.position_embeddings",
+            "embeddings.cls_token",
+            "embeddings.register_tokens",
+        }:
+            ftype = 1
+        else:
+            ftype = 0
+    else:
+        if name in {"embeddings.patch_embeddings.projection.weight"}:
+            ftype = 1
+
     data = data.astype(np.float32) if ftype == 0 else data.astype(np.float16)
 
     if name == "embeddings.patch_embeddings.projection.bias":
