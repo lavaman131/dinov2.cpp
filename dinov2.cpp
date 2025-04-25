@@ -352,77 +352,106 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
 }
 
 
-bool dino_model_quantize(const std::string &fname_inp, const std::string &fname_out, int itype) {
-    const auto new_type = static_cast<ggml_type>(itype);
+bool dino_model_quantize(const std::string &fname_inp,
+                         const std::string &fname_out,
+                         int itype) {
+    const auto quant_type = static_cast<ggml_type>(itype);
 
     struct ggml_context *tmp_ctx = nullptr;
     struct gguf_init_params gguf_params = {
         /*.no_alloc   =*/ false,
         /*.ctx        =*/ &tmp_ctx,
     };
-    gguf_context *gguf_ctx = gguf_init_from_file(fname_inp.c_str(), gguf_params);
-
-
+    gguf_context *gguf_ctx = gguf_init_from_file(
+        fname_inp.c_str(), gguf_params);
     if (!gguf_ctx) {
-        fprintf(stderr, "%s: gguf_init_from_file() failed\n", __func__);
+        fprintf(stderr, "%s: gguf_init_from_file() failed\n",
+                __func__);
         return false;
     }
 
     const int num_tensors = gguf_get_n_tensors(gguf_ctx);
 
     gguf_context *gguf_save = gguf_init_empty();
-
     gguf_set_kv(gguf_save, gguf_ctx);
-
     gguf_set_val_u32(gguf_save, "ftype", itype);
 
-    bool quantize = false;
-    int64_t n_per_row = 0;
-    int64_t nrows = 0;
-    std::vector<float> work;
+    std::vector<std::vector<uint8_t> > buffers(num_tensors);
+    ggml_type new_type;
+    bool do_q = false;
 
     for (int i = 0; i < num_tensors; i++) {
-        const char *name = gguf_get_tensor_name(gguf_ctx, i);
-        struct ggml_tensor *src = ggml_get_tensor(tmp_ctx, name);
+        const char *name =
+                gguf_get_tensor_name(gguf_ctx, i);
+        const struct ggml_tensor *tensor =
+                ggml_get_tensor(tmp_ctx, name);
+        gguf_add_tensor(gguf_save, tensor);
 
-        quantize = do_quantize(name, src);
+        auto &work_bytes = buffers[i];
+        const size_t byte_size = ggml_nbytes(tensor);
+        work_bytes.resize(byte_size);
+        void *new_data = work_bytes.data();
+        size_t new_size = 0;
 
-        gguf_add_tensor(gguf_save, src);
+        do_q = do_quantize(name, tensor);
 
-        if (quantize) {
-            n_per_row = src->ne[0];
-            nrows = src->ne[1];
-            work.resize(ggml_nelements(src));
-            // std::cout << name << " " << std::endl;
-            // std::cout << src->type << " " << std::endl;
-            // if (src->type != GGML_TYPE_F32) {
-            //     auto *ptr = static_cast<ggml_fp16_t *>(ggml_get_data(src));
-            //     float data = ggml_compute_fp16_to_fp32(*ptr);
-            //     *ptr = ggml_compute_fp32_to_fp16(data);
-            // }
-            std::vector<float> hist_cur(1 << 4, 0);
-            const size_t new_size = ggml_quantize_chunk(new_type, ggml_get_data_f32(src), work.data(), 0, nrows,
-                                                        n_per_row,
-                                                        hist_cur.data());
-            if (!ggml_validate_row_data(new_type, work.data(), new_size)) {
-                throw std::runtime_error("quantized data validation failed");
+        if (do_q) {
+            new_type = quant_type;
+            const bool is_fp16 = tensor->type == GGML_TYPE_F16;
+            const float *data_f32 = nullptr;
+            if (is_fp16) {
+                std::vector<float> f16_to_f32;
+                const int64_t ne = ggml_nelements(tensor);
+                f16_to_f32.resize(ne);
+                const uint16_t *src16 = static_cast<uint16_t *>(tensor->data);
+                for (int64_t j = 0; j < ne; ++j) {
+                    f16_to_f32[j] = ggml_fp16_to_fp32(src16[j]);
+                }
+                data_f32 = f16_to_f32.data();
+            } else {
+                data_f32 = ggml_get_data_f32(tensor);
             }
-
-            // gguf_set_tensor_type(gguf_save, name, new_type); // [1, 1370, 384]
-            // gguf_set_tensor_data(gguf_save, name, work.data());
+            new_size = ggml_quantize_chunk(
+                quant_type,
+                data_f32,
+                new_data,
+                0,
+                tensor->ne[1],
+                tensor->ne[0],
+                nullptr
+            );
+            if (!ggml_validate_row_data(
+                quant_type, new_data, new_size)) {
+                throw std::runtime_error(
+                    "quantized data validation failed");
+            }
+        } else {
+            new_type = tensor->type;
+            memcpy(new_data, tensor->data, byte_size);
+            new_size = byte_size;
         }
+
+        gguf_set_tensor_type(gguf_save, name, new_type);
+        GGML_ASSERT(
+            gguf_get_tensor_size(
+                gguf_save,
+                gguf_find_tensor(gguf_save, name))
+            == new_size);
+        gguf_set_tensor_data(
+            gguf_save, name, new_data);
     }
 
-
-    if (!gguf_write_to_file(gguf_save, fname_out.c_str(), false)) {
-        fprintf(stderr, "failed to write GGUF file\n");
+    if (!gguf_write_to_file(
+        gguf_save, fname_out.c_str(), false)) {
+        fprintf(stderr,
+                "failed to write GGUF file\n");
     }
 
     gguf_free(gguf_ctx);
     gguf_free(gguf_save);
-
     return true;
 }
+
 
 // DINOv2 Encoder
 
@@ -463,6 +492,8 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
                                          2 * cur->nb[3]);
     V = ggml_reshape_4d(ctx_cgraph, V, n_enc_head_dim, num_attention_heads, W * H, B);
 
+    // std::cout << "K type " << ggml_type_name(K->type) << std::endl;
+
 
     if (params.enable_flash_attn) {
         const int64_t total_patches_padding = GGML_PAD(total_patches, 32);
@@ -479,15 +510,15 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
 
         V = ggml_pad(ctx_cgraph, V, hidden_size_to_pad, total_patches_to_pad, 0, 0);
 
-        K = ggml_cpy(ctx_cgraph, K,
-                     ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F16, n_enc_head_dim, total_patches_padding,
-                                        num_attention_heads,
-                                        1));
-
-        V = ggml_cpy(ctx_cgraph, V,
-                     ggml_new_tensor_4d(ctx_cgraph, GGML_TYPE_F16, n_enc_head_dim, total_patches_padding,
-                                        num_attention_heads,
-                                        1));
+        // K = ggml_cpy(ctx_cgraph, K,
+        //              ggml_new_tensor_4d(ctx_cgraph, cur->type, n_enc_head_dim, total_patches_padding,
+        //                                 num_attention_heads,
+        //                                 1));
+        //
+        // V = ggml_cpy(ctx_cgraph, V,
+        //              ggml_new_tensor_4d(ctx_cgraph, cur->type, n_enc_head_dim, total_patches_padding,
+        //                                 num_attention_heads,
+        //                                 1));
 
         struct ggml_tensor *KQV = ggml_flash_attn_ext(ctx_cgraph, Q, K, V, nullptr, scale, 0.0f, 0.0f);
         KQV = ggml_view_4d(ctx_cgraph, KQV, KQV->ne[0], KQV->ne[1], KQV->ne[2] - total_patches_to_pad, KQV->ne[3],
@@ -636,8 +667,9 @@ void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
     // reshape patch embeddings from (768  37  37  1) to (768  1369  1  1)
     cur = ggml_reshape_4d(ctx_cgraph, cur, hidden_size, num_patches, 1, 1);
 
-    struct ggml_tensor *pos_embed_fixed = ggml_new_tensor_3d(ctx_cgraph, GGML_TYPE_F32, model.hparams.hidden_size,
-                                                             num_patches + 1, 1
+    struct ggml_tensor *pos_embed_fixed = ggml_new_tensor_3d(
+        ctx_cgraph, model.tensors.at("embeddings.position_embeddings")->type, model.hparams.hidden_size,
+        num_patches + 1, 1
     );
 
     ggml_set_name(pos_embed_fixed, "pos_embed_fixed");
