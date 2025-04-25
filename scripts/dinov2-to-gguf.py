@@ -4,9 +4,8 @@ from typing import Dict, BinaryIO, Final
 import numpy as np
 import torch
 from transformers import AutoModel, AutoConfig, AutoModelForImageClassification
-from gguf import GGUFWriter, GGUFEndian
-
-DATA_TYPES = ["f32", "f16"]
+from gguf import GGUFWriter, GGUFEndian, GGMLQuantizationType
+from dinov2_inference.types import GGMLNumpyType
 
 
 def get_args() -> argparse.Namespace:
@@ -20,13 +19,6 @@ def get_args() -> argparse.Namespace:
         default="facebook/dinov2-small-imagenet1k-1-layer",
         help="HuggingFace model name",
     )
-    parser.add_argument(
-        "--ftype",
-        type=int,
-        choices=[0, 1],
-        default=1,
-        help="float type: 0 for float32, 1 for float16",
-    )
     args = parser.parse_args()
     return args
 
@@ -38,7 +30,7 @@ ARCH: Final[str] = "dinov2"
 def main() -> None:
     args = get_args()
     # Output file name
-    fname_out = f"./ggml-model-{DATA_TYPES[args.ftype]}.gguf"
+    fname_out = f"./ggml-model.gguf"
 
     is_classifier = "imagenet" in args.model_name
 
@@ -51,6 +43,8 @@ def main() -> None:
     else:
         model = AutoModel.from_pretrained(args.model_name)
 
+    ggml_type = GGMLQuantizationType.F16
+
     # Hyperparameters
     hparams = {
         "hidden_size": config.hidden_size,
@@ -59,7 +53,7 @@ def main() -> None:
         "num_classes": len(id2label),
         "patch_size": config.patch_size,
         "img_size": config.image_size,
-        "ftype": args.ftype
+        "ftype": ggml_type.value
     }
 
     gguf_writer = GGUFWriter(
@@ -84,7 +78,7 @@ def main() -> None:
             " and type: ",
             v.dtype,
         )
-        save_tensor(gguf_writer, k, v, args.ftype)
+        save_tensor(gguf_writer, k, v, ggml_type)
 
     if num_register_tokens > 0:
         layers = model.dinov2_with_registers.encoder.layer
@@ -105,7 +99,7 @@ def main() -> None:
             " and type: ",
             qkv.dtype,
         )
-        save_tensor(gguf_writer, name, qkv, args.ftype)
+        save_tensor(gguf_writer, name, qkv, ggml_type)
 
         q = layer.attention.attention.query.bias
         k = layer.attention.attention.key.bias
@@ -118,7 +112,7 @@ def main() -> None:
             " and type: ",
             qkv.dtype,
         )
-        save_tensor(gguf_writer, name, qkv, args.ftype)
+        save_tensor(gguf_writer, name, qkv, ggml_type)
 
     hparams["num_register_tokens"] = num_register_tokens
 
@@ -149,44 +143,27 @@ def write_hparams(writer: GGUFWriter, hparams: Dict[str, int]) -> None:
 
 
 def save_tensor(
-        writer: GGUFWriter, name: str, tensor: torch.Tensor, ftype: int
+        writer: GGUFWriter, name: str, tensor: torch.Tensor, ggml_type: GGMLQuantizationType
 ) -> None:
     data = tensor.numpy()
 
-    ftype = (
-        1
-        if ftype == 1
-           and tensor.ndim != 1
-           and name
-           not in {
-               "embeddings.position_embeddings",
-               "embeddings.cls_token",
-               "embeddings.register_tokens",
-           }
-        else 0
-    )
+    if tensor.ndim == 1 or name in {
+        "embeddings.position_embeddings",
+        "embeddings.cls_token",
+        "embeddings.register_tokens",
+    }:
+        ggml_type = GGMLQuantizationType.F32
 
-    if ftype == 1:
-        if tensor.ndim != 1 and name not in {
-            "embeddings.position_embeddings",
-            "embeddings.cls_token",
-            "embeddings.register_tokens",
-        }:
-            ftype = 1
-        else:
-            ftype = 0
-    else:
-        if name in {"embeddings.patch_embeddings.projection.weight"}:
-            ftype = 1
+    np_dtype = GGMLNumpyType[ggml_type.name].value
 
-    data = data.astype(np.float32) if ftype == 0 else data.astype(np.float16)
+    data = data.astype(np_dtype)
 
     if name == "embeddings.patch_embeddings.projection.bias":
         data = data.reshape(1, data.shape[0], 1, 1)
 
     writer.add_tensor(name, data)
 
-    print(name, data.shape, DATA_TYPES[ftype])
+    print(name, data.shape, ggml_type.name)
 
 
 def get_tensor_name(name: str) -> str:

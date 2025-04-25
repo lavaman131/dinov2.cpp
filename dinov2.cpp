@@ -332,7 +332,7 @@ bool dino_model_load(const cv::Size img_size, const std::string &fname, dino_mod
         struct ggml_tensor *dst = ggml_dup_tensor(model.ctx, src);
         ggml_set_name(dst, name);
         model.tensors[name] = dst;
-        std::cout << "i: " << i << ", name: " << name << ", type: " << ggml_type_name(dst->type) << std::endl;
+        // std::cout << "i: " << i << ", name: " << name << ", type: " << ggml_type_name(dst->type) << std::endl;
     }
 
 
@@ -466,11 +466,12 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
 
     // self-attention
 
-    cur = ggml_mul_mat(
-        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.attention.qkv.weight"), cur);
-    cur = ggml_add_inplace(ctx_cgraph, cur,
-                           model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.attention.qkv.bias"));
+    const std::string base_layer_name = "encoder.layer." + std::to_string(il);
 
+    cur = ggml_mul_mat(
+        ctx_cgraph, model.tensors.at(base_layer_name + ".attention.attention.qkv.weight"), cur);
+    cur = ggml_add_inplace(ctx_cgraph, cur,
+                           model.tensors.at(base_layer_name + ".attention.attention.qkv.bias"));
 
     // split qkv into separate tensors
     const int B = cur->ne[3];
@@ -510,15 +511,10 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
 
         V = ggml_pad(ctx_cgraph, V, hidden_size_to_pad, total_patches_to_pad, 0, 0);
 
-        // K = ggml_cpy(ctx_cgraph, K,
-        //              ggml_new_tensor_4d(ctx_cgraph, cur->type, n_enc_head_dim, total_patches_padding,
-        //                                 num_attention_heads,
-        //                                 1));
-        //
-        // V = ggml_cpy(ctx_cgraph, V,
-        //              ggml_new_tensor_4d(ctx_cgraph, cur->type, n_enc_head_dim, total_patches_padding,
-        //                                 num_attention_heads,
-        //                                 1));
+        const ggml_type dtype = model.tensors.at(base_layer_name + ".attention.attention.qkv.weight")->type;
+
+        K = ggml_cast(ctx_cgraph, K, dtype);
+        V = ggml_cast(ctx_cgraph, V, dtype);
 
         struct ggml_tensor *KQV = ggml_flash_attn_ext(ctx_cgraph, Q, K, V, nullptr, scale, 0.0f, 0.0f);
         KQV = ggml_view_4d(ctx_cgraph, KQV, KQV->ne[0], KQV->ne[1], KQV->ne[2] - total_patches_to_pad, KQV->ne[3],
@@ -548,11 +544,11 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
     }
 
     cur = ggml_mul_mat(
-        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".attention.output.dense.weight"),
+        ctx_cgraph, model.tensors.at(base_layer_name + ".attention.output.dense.weight"),
         cur);
     cur = ggml_add_inplace(ctx_cgraph, cur,
                            model.tensors.at(
-                               "encoder.layer." + std::to_string(il) + ".attention.output.dense.bias"));
+                               base_layer_name + ".attention.output.dense.bias"));
 
     return cur;
 }
@@ -560,11 +556,12 @@ struct ggml_tensor *attn(struct ggml_tensor *cur, const float scale, const int i
 struct ggml_tensor *mlp(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph,
                         const dino_model &model,
                         const dino_params &params) {
+    const std::string base_layer_name = "encoder.layer." + std::to_string(il);
     // fully connected layer
-    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.weight"),
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at(base_layer_name + ".mlp.fc1.weight"),
                        cur);
     cur = ggml_add_inplace(ctx_cgraph, cur,
-                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc1.bias"));
+                           model.tensors.at(base_layer_name + ".mlp.fc1.bias"));
 
     // GELU activation
     cur = ggml_gelu(ctx_cgraph, cur);
@@ -573,22 +570,23 @@ struct ggml_tensor *mlp(struct ggml_tensor *cur, const int il, struct ggml_conte
     //         << std::endl;
 
     // projection
-    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.weight"),
+    cur = ggml_mul_mat(ctx_cgraph, model.tensors.at(base_layer_name + ".mlp.fc2.weight"),
                        cur);
     cur = ggml_add_inplace(ctx_cgraph, cur,
-                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.fc2.bias"));
+                           model.tensors.at(base_layer_name + ".mlp.fc2.bias"));
     return cur;
 }
 
 struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggml_context *ctx_cgraph,
                                const dino_model &model,
                                const dino_params &params) {
+    const std::string base_layer_name = "encoder.layer." + std::to_string(il);
     // fully connected layer
     cur = ggml_mul_mat(
-        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_in.weight"),
+        ctx_cgraph, model.tensors.at(base_layer_name + ".mlp.weights_in.weight"),
         cur);
     cur = ggml_add_inplace(ctx_cgraph, cur,
-                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_in.bias"));
+                           model.tensors.at(base_layer_name + ".mlp.weights_in.bias"));
 
     // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
     //         << std::endl;
@@ -614,10 +612,10 @@ struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggm
 
     // projection
     cur = ggml_mul_mat(
-        ctx_cgraph, model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.weight"),
+        ctx_cgraph, model.tensors.at(base_layer_name + ".mlp.weights_out.weight"),
         cur);
     cur = ggml_add_inplace(ctx_cgraph, cur,
-                           model.tensors.at("encoder.layer." + std::to_string(il) + ".mlp.weights_out.bias"));
+                           model.tensors.at(base_layer_name + ".mlp.weights_out.bias"));
     return cur;
 }
 
@@ -645,10 +643,15 @@ void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
         ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.weight"), input);
 
 
+    struct ggml_tensor *tensor = ggml_repeat(
+        ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.bias"),
+        cur);
+
+    // std::cout << ggml_type_name(tensor->type) << std::endl;
+
     cur = ggml_add_inplace(ctx_cgraph,
                            ggml_repeat(ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.bias"),
                                        cur), cur); // (37, 37, 768, 1)
-
 
     cur = ggml_cont(ctx_cgraph,
                     ggml_permute(ctx_cgraph, cur, 1, 2, 0, 3)); // (37, 768, 37, 1)
@@ -943,7 +946,7 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
     const struct ggml_tensor *pos_embed = ggml_get_tensor(model.ctx, "embeddings.position_embeddings");
 
     const std::vector<float> pos_embed_fixed_data = interpolate_pos_embed(
-        img.size(), ggml_get_data_f32(pos_embed), model.hparams);
+        img.size(), (float *) (pos_embed->data), model.hparams);
 
     struct ggml_tensor *pos_embed_fixed = ggml_graph_get_tensor(gf, "pos_embed_fixed");
 
