@@ -52,9 +52,6 @@ existing code from [vit.cpp](https://github.com/staghado/vit.cpp).
 
 - Dependency-free and lightweight inference thanks to [ggml](https://github.com/ggerganov/ggml).
 - Support for DINO models from huggingface with conversion from pytorch weights to gguf.
-
-
-Todo:
 - 4-bit, 5-bit and 8-bit quantization support.
 
 
@@ -128,10 +125,9 @@ uv sync --frozen
 # size of 518  
 # DINOv2 weights are always fp16
 # without registers
-python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-small-imagenet1k-1-layer --ftype 1
+python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-small-imagenet1k-1-layer
 # with registers
-python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-with-registers-small-imagenet1k-1-layer --ftype 1
-
+python ./scripts/dinov2-to-gguf.py --model_name facebook/dinov2-with-registers-small-imagenet1k-1-layer
 
 ```
 
@@ -323,10 +319,10 @@ pip install memory_profiler threadpoolctl
 # run the benchmark of PyTorch
 python scripts/benchmark.py
 
-# run the benchmark of dinov2.cpp for non-qunatized model
+# run the benchmark of dinov2.cpp for non-quantized model
 ./scripts/benchmark.sh
 
-# to run the benchamrk for qunatized models; 4 threads and quantize flag
+# to run the benchamrk for quantized models; 4 threads and quantize flag
 ./scripts/benchmark.sh 4 1
 ```
 
@@ -335,15 +331,12 @@ used by PyTorch.
 
 ## Quantization
 
-Todo:
-Quantization is not currently supported for dinov2.cpp
-
-`dinov2.cpp` supports many quantization strategies from ggml such as q4_0, q4_1, q5_0, q5_1 and q8_0 types.
+`dinov2.cpp` supports quantization strategies from ggml such as q4_0, q4_1, q5_0, q5_1 and q8_0 types.
 You can quantize a model in F32 (the patch embedding is in F16) to one of these types by using the `./bin/quantize`
 binary.
 
 ```
-usage: ./bin/quantize /path/to/ggml-model-f32.gguf /path/to/ggml-model-quantized.gguf type                              
+usage: ./bin/quantize /path/to/ggml-model.gguf /path/to/ggml-model-quantized.gguf type                              
   type = 2 - q4_0                                                                                                       
   type = 3 - q4_1                                                                                                       
   type = 6 - q5_0                                                                                                       
@@ -354,7 +347,7 @@ usage: ./bin/quantize /path/to/ggml-model-f32.gguf /path/to/ggml-model-quantized
 For example, you can run the following to convert the model to q5_1:
 
 ```shell
-./bin/quantize ../tiny-ggml-model-f16.gguf ../tiny-ggml-model-f16-quant.gguf 7
+./bin/quantize ../ggml-model-f16.gguf ../ggml-model-f16-quant.gguf 7
 ```
 
 Then you can use `tiny-ggml-model-f16-quant.gguf` just like the model in F16.
