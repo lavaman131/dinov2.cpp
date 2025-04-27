@@ -989,18 +989,20 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
         output->preds = preds;
     } else {
         struct ggml_tensor *patches = ggml_graph_get_tensor(gf, "patch_tokens");
-        const float *patch_tokens_data = ggml_get_data_f32(patches);
-        const int h0 = img.rows / model.hparams.patch_size;
-        const int w0 = img.cols / model.hparams.patch_size;
-        const int num_patches = h0 * w0;
-        // Allocate cv::Mat (which allocates and owns memory)
-        cv::Mat patch_tokens(num_patches, model.hparams.hidden_size, CV_32F);
-
-        // Copy data from ggml tensor into cv::Mat
-        std::memcpy(patch_tokens.data, patch_tokens_data, num_patches * model.hparams.hidden_size * sizeof(float));
-
-        // Store in your output struct
-        output->patch_tokens = patch_tokens;
+        std::cout << "patches shape " << patches->ne[0] << ", " << patches->ne[1] << ", " << patches->ne[2] << ", "
+                << patches->ne[3] << std::endl;
+        // const float *patch_tokens_data = ggml_get_data_f32(patches);
+        // const int h0 = img.rows / model.hparams.patch_size;
+        // const int w0 = img.cols / model.hparams.patch_size;
+        // const int num_patches = h0 * w0;
+        // // Allocate cv::Mat (which allocates and owns memory)
+        // cv::Mat patch_tokens(num_patches, model.hparams.hidden_size, CV_32F);
+        //
+        // // Copy data from ggml tensor into cv::Mat
+        // std::memcpy(patch_tokens.data, patch_tokens_data, num_patches * model.hparams.hidden_size * sizeof(float));
+        //
+        // // Store in your output struct
+        // output->patch_tokens = patch_tokens;
     }
 
 
