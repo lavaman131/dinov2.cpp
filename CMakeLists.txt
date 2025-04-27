@@ -16,9 +16,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Set the compiler flags, modify here if needed!
-# -Ofast is to be used with caution! if doesn't work, try -O3
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -march=native")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native")
+# If doesn't work, try removing -ffast-math and -fno-finite-math-only
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -ffast-math -march=native -fno-finite-math-only")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math -march=native -fno-finite-math-only")
 
 # deps
 add_subdirectory(ggml)
