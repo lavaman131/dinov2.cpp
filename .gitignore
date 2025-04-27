@@ -494,6 +494,5 @@ TSWLatexianTemp*
 .idea/
 cmake-build-debug/
 
-.vs/*
-
-!.vs/launch.vs.json
+.vs/
+.vscode/

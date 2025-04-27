@@ -76,7 +76,7 @@ setup_commands
 for model in "${models[@]}"; do
     model_name="facebook/dinov2-${model}-imagenet1k-1-layer"
     echo "Converting model: $model_name"
-    python ./scripts/dinov2-to-gguf.py --model_name "$model_name" --ftype 1 > /dev/null 2>&1
+    python ./scripts/dinov2-to-gguf.py --model_name "$model_name" > /dev/null 2>&1
 
     cd build/ || exit
 
@@ -85,14 +85,14 @@ for model in "${models[@]}"; do
             q="${quant_names[$i]}"
             q_index="${quant_ids[$i]}"
             echo "Quantizing ... to ${q} (index ${q_index})"
-            ./bin/quantize ../ggml-model-f16.gguf ../ggml-model-f16-quant.gguf ${q_index} > /dev/null 2>&1
+            ./bin/quantize ../ggml-model.gguf ../ggml-model-quant.gguf ${q_index} > /dev/null 2>&1
 
             sum=0
             mem_usage=0
 
             for ((run=1; run<=N; run++)); do
                 start=$(get_time)
-                measure_cmd "./bin/inference -c -m ../ggml-model-f16-quant.gguf -i ../assets/tench.jpg -t $num_threads"
+                measure_cmd "./bin/inference -c -m ../ggml-model-quant.gguf -i ../assets/tench.jpg -t $num_threads"
                 end=$(get_time)
                 diff=$((end - start))
                 sum=$((sum + diff))
@@ -115,7 +115,7 @@ for model in "${models[@]}"; do
 
         for ((run=1; run<=N; run++)); do
             start=$(get_time)
-            measure_cmd "./bin/inference -c -m ../ggml-model-f16.gguf -i ../assets/tench.jpg -t $num_threads"
+            measure_cmd "./bin/inference -c -m ../ggml-model.gguf -i ../assets/tench.jpg -t $num_threads"
             end=$(get_time)
             diff=$((end - start))
             sum=$((sum + diff))
