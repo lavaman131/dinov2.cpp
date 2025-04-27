@@ -399,8 +399,8 @@ bool dino_model_quantize(const std::string &fname_inp,
             new_type = quant_type;
             const bool is_fp16 = tensor->type == GGML_TYPE_F16;
             const float *data_f32 = nullptr;
+            std::vector<float> f16_to_f32;
             if (is_fp16) {
-                std::vector<float> f16_to_f32;
                 const int64_t ne = ggml_nelements(tensor);
                 f16_to_f32.resize(ne);
                 const uint16_t *src16 = static_cast<uint16_t *>(tensor->data);
