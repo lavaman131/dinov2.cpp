@@ -357,28 +357,28 @@ Then you can use `tiny-ggml-model-f16-quant.gguf` just like the model in F16.
 Here are the benchmarks for the different models and quantizations on my machine:
 For accurate estimation of run times, these benchmarks were run 100 times each.
 
-| Model | Quantization | Speed (ms) | Mem (MB) |
-|:-----:|:------------:|:----------:|:--------:|
-| tiny  |     q4_0     |   105 ms   |  12 MB   |
-| tiny  |     q4_1     |   97 ms    |  12 MB   |
-| tiny  |     q5_0     |   116 ms   |  13 MB   |
-| tiny  |     q5_1     |   112 ms   |  13 MB   |
-| tiny  |     q8_0     |   90 ms    |  15 MB   |
-| small |     q4_0     |   240 ms   |  23 MB   |
-| small |     q4_1     |   224 ms   |  24 MB   |
-| small |     q5_0     |   288 ms   |  25 MB   |
-| small |     q5_1     |   277 ms   |  27 MB   |
-| small |     q8_0     |   228 ms   |  33 MB   |
-| base  |     q4_0     |   704 ms   |  61 MB   |
-| base  |     q4_1     |   626 ms   |  66 MB   |
-| base  |     q5_0     |   851 ms   |  71 MB   |
-| base  |     q5_1     |   806 ms   |  76 MB   |
-| base  |     q8_0     |   659 ms   |  102 MB  |
-| large |     q4_0     |  2189 ms   |  181 MB  |
-| large |     q4_1     |  1919 ms   |  199 MB  |
-| large |     q5_0     |  2676 ms   |  217 MB  |
-| large |     q5_1     |  2547 ms   |  235 MB  |
-| large |     q8_0     |  1994 ms   |  325 MB  |
+| Model  | Quantization | Speed (ms) | Mem (MB) |
+| :----: | :----------: | :--------: | :------: |
+| small | q4_0 | 164 | 49 |
+| small | q4_1 | 278 | 51 |
+| small | q5_0 | 254 | 54 |
+| small | q5_1 | 222 | 56 |
+| small | q8_0 | 187 | 70 |
+| base | q4_0 | 235 | 48 |
+| base | q4_1 | 188 | 51 |
+| base | q5_0 | 222 | 54 |
+| base | q5_1 | 292 | 56 |
+| base | q8_0 | 296 | 69 |
+| large | q4_0 | 256 | 48 |
+| large | q4_1 | 174 | 51 |
+| large | q5_0 | 169 | 54 |
+| large | q5_1 | 196 | 56 |
+| large | q8_0 | 158 | 69 |
+| giant | q4_0 | 212 | 48 |
+| giant | q4_1 | 163 | 51 |
+| giant | q5_0 | 186 | 54 |
+| giant | q5_1 | 185 | 57 |
+| giant | q8_0 | 159 | 69 |
 
 
 
