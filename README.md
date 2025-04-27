@@ -75,10 +75,10 @@ The implemented architecture is based on the DINOv2 architecture:
 
 #### Classification Output
   <pre>
-  $ ./bin/dinov2 -t 4 -m ../ggml-model-f16.gguf -i ../assets/tench.jpg 
+  $ ./bin/dinov2 -t 4 -m ../ggml-model.gguf -i ../assets/tench.jpg 
   main: seed = 42
   main: loaded image '../assets/tench.jpg' (408 x 612)
-  dino_model_load: loading model from '../ggml-model-f16.gguf' - please wait
+  dino_model_load: loading model from '../ggml-model.gguf' - please wait
   dino_model_load: hidden_size            = 384
   dino_model_load: num_hidden_layers      = 12
   dino_model_load: num_register_tokens    = 4
@@ -173,7 +173,7 @@ tokens.
 # on MacOS/Linux 
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
-./bin/inference -m ../ggml-model-f16.gguf -i ../assets/tench.jpg -c
+./bin/inference -m ../ggml-model.gguf -i ../assets/tench.jpg -c
 ```
 
 ```bash
@@ -181,14 +181,14 @@ cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
 mkdir build ; cd build
 cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
 ninja
-./bin/inference.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg -c
+./bin/inference.exe -m ../ggml-model.gguf -i ../assets/tench.jpg -c
 ```
 #### inference.cpp (Feature Extraction)
 ```bash
 # on MacOS/Linux 
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
-./bin/inference -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/inference -m ../ggml-model.gguf -i ../assets/tench.jpg
 ```
 
 ```bash
@@ -196,7 +196,7 @@ cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
 mkdir build ; cd build
 cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
 ninja
-./bin/inference.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/inference.exe -m ../ggml-model.gguf -i ../assets/tench.jpg
 ```
 
 #### realtime.cpp (Live Feature Extraction)
@@ -204,7 +204,7 @@ ninja
 # on MacOS/Linux 
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
-./bin/realtime -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/realtime -m ../ggml-model.gguf -i ../assets/tench.jpg
 ```
 
 ```bash
@@ -212,7 +212,7 @@ cmake -DCMAKE_BUILD_TYPE=Release .. && make -j 4
 mkdir build ; cd build
 cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Release ..
 ninja
-./bin/realtime.exe -m ../ggml-model-f16.gguf -i ../assets/tench.jpg
+./bin/realtime.exe -m ../ggml-model.gguf -i ../assets/tench.jpg
 ```
 The optimal number of threads to use depends on many factors and more is not always better. Usually using a number of
 threads equal to the number of available physical cores gives the best performance in terms of speed.
@@ -242,7 +242,7 @@ Additionally compile with OpenMP by specifying the `-fopenmp` flag to the compil
 allowing multithreaded runs. Make sure to also enable multiple threads when running, e.g.:
 
 ```bash
-OMP_NUM_THREADS=4 ./bin/inference -t 4 -m ../ggml-model-f16.bin -i ../assets/tench.jpg
+OMP_NUM_THREADS=4 ./bin/inference -t 4 -m ../ggml-model.bin -i ../assets/tench.jpg
 ```
 
 ## Run
@@ -253,7 +253,7 @@ usage: ./bin/inference [options]
 
 options:
   -h, --help              show this help message and exit
-  -m FNAME, --model       model path (default: ../ggml-model-f16.gguf)
+  -m FNAME, --model       model path (default: ../ggml-model.gguf)
   -i FNAME, --inp         input file (default: ../assets/tench.jpg)
   -o FNAME, --out         output file for backbone PCA features (default: pca_visual.png)
   -k N, --topk            top k classes to print (default: 5)
@@ -268,7 +268,7 @@ usage: ./bin/realtime [options]
 
 options:
   -h, --help              show this help message and exit
-  -m FNAME, --model       model path (default: ../ggml-model-f16.gguf)
+  -m FNAME, --model       model path (default: ../ggml-model.gguf)
   -t N, --threads         number of threads to use during computation (default: 4)
   -fa, --flash_attn       whether to enable flash_attn, less accurate (default: 0)
   -cid, --camera_id       the idea of the camera for realtime backbone PCA feature streaming (default: 0)
@@ -347,10 +347,10 @@ usage: ./bin/quantize /path/to/ggml-model.gguf /path/to/ggml-model-quantized.ggu
 For example, you can run the following to convert the model to q5_1:
 
 ```shell
-./bin/quantize ../ggml-model-f16.gguf ../ggml-model-f16-quant.gguf 7
+./bin/quantize ../ggml-model.gguf ../ggml-model-quant.gguf 7
 ```
 
-Then you can use `tiny-ggml-model-f16-quant.gguf` just like the model in F16.
+Then you can use `tiny-ggml-model-quant.gguf` just like the model in F16.
 
 ### Results
 
