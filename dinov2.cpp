@@ -642,11 +642,6 @@ void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
     struct ggml_tensor *cur = ggml_conv_2d_sk_p0(
         ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.weight"), input);
 
-
-    struct ggml_tensor *tensor = ggml_repeat(
-        ctx_cgraph, model.tensors.at("embeddings.patch_embeddings.projection.bias"),
-        cur);
-
     // std::cout << ggml_type_name(tensor->type) << std::endl;
 
     cur = ggml_add_inplace(ctx_cgraph,
