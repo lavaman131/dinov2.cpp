@@ -45,7 +45,7 @@ option(BUILD_REALTIME "Build the realtime executable" ON)
 
 
 if (BUILD_REALTIME)
-    add_executable(realtime realtime.cpp dinov2.cpp pca.cpp)
+    add_executable(realtime realtime.cpp dinov2.cpp)
     target_link_libraries(realtime PRIVATE ${OpenCV_LIBS} PUBLIC ggml)
     target_include_directories(realtime PUBLIC .)
 endif ()
