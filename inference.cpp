@@ -69,13 +69,15 @@ int main(int argc, char **argv) {
     // prepare for graph computation, memory allocation and results processing
     {
         ggml_backend_synchronize(model.backend);
+        ggml_gallocr_t allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
         int64_t start_time = ggml_time_ms();
-        std::unique_ptr<dino_output> output = dino_predict(model, img, params);
+        std::unique_ptr<dino_output> output = dino_predict(model, img, params, allocr);
         ggml_backend_synchronize(model.backend);
         int64_t end_time = ggml_time_ms();
         fprintf(stderr, "%s: graph computation took %lld ms\n", __func__, end_time - start_time);
 
         ggml_free(model.ctx);
+        ggml_gallocr_free(allocr);
         ggml_backend_buffer_free(model.buffer);
         ggml_backend_free(model.backend);
 

@@ -50,6 +50,8 @@ int main(int argc, char **argv) {
     const auto new_size = cv::Size((FRAME_WIDTH / model.hparams.patch_size + 1) * model.hparams.patch_size,
                                    (FRAME_HEIGHT / model.hparams.patch_size + 1) * model.hparams.patch_size);
 
+    ggml_gallocr_t allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
+
     while (true) {
         cap.read(frame);
         if (frame.empty()) {
@@ -64,23 +66,20 @@ int main(int argc, char **argv) {
 
         // output from model
         ggml_backend_synchronize(model.backend);
-        int64_t start_time_inf = ggml_time_ms();
-        std::unique_ptr<dino_output> output = dino_predict(model, input, params);
+        int64_t start_time = ggml_time_ms();
+        std::unique_ptr<dino_output> output = dino_predict(model, input, params, allocr);
         ggml_backend_synchronize(model.backend);
-        int64_t end_time_inf = ggml_time_ms();
-        fprintf(stderr, "%s: graph computation took %lld ms\n", __func__, end_time_inf - start_time_inf);
-
-        int64_t start_time_pca = ggml_time_ms();
+        int64_t end_time = ggml_time_ms();
+        fprintf(stderr, "%s: graph computation took %lld ms\n", __func__, end_time - start_time);
 
         // pca conversion
         const cv::Mat &patch_tokens = output->patch_tokens.value();
-        // cv::PCA pca(patch_tokens, cv::Mat(), cv::PCA::DATA_AS_ROW, 3);
+        cv::PCA pca(patch_tokens, cv::Mat(), cv::PCA::DATA_AS_ROW, 3);
 
         // project original features into the new 3‑D PCA space
-        cv::Mat projected(3, new_size.height, new_size.width, cv::Scalar(0));
-        // pca.project(patch_tokens, projected);
+        cv::Mat projected;
+        pca.project(patch_tokens, projected);
         // projected: total_pixels×3, CV_32F
-
 
         cv::Mat projected_norm;
         cv::normalize(projected, projected_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
@@ -93,10 +92,6 @@ int main(int argc, char **argv) {
         std::vector<cv::Mat> imgs = {frame, pca_image};
         cv::hconcat(imgs, combined_frame);
 
-        int64_t end_time_pca = ggml_time_ms();
-
-        fprintf(stderr, "%s: pca computation took %lld ms\n", __func__, end_time_pca - start_time_pca);
-
         cv::imshow("Output", combined_frame);
 
         if (cv::waitKey(1) == 'q') {
@@ -105,6 +100,7 @@ int main(int argc, char **argv) {
     }
 
     ggml_free(model.ctx);
+    ggml_gallocr_free(allocr);
     ggml_backend_buffer_free(model.buffer);
     ggml_backend_free(model.backend);
 

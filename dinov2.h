@@ -109,7 +109,7 @@ struct ggml_cgraph *build_graph(
     const dino_params &params);
 
 std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat &img,
-                                          const dino_params &params);
+                                          const dino_params &params, ggml_gallocr_t allocr);
 
 void print_usage(int argc, char **argv, const dino_params &params);
 

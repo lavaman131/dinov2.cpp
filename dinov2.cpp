@@ -903,7 +903,7 @@ bool dino_params_parse(int argc, char **argv, dino_params &params) {
 }
 
 std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat &img,
-                                          const dino_params &params) {
+                                          const dino_params &params, ggml_gallocr_t allocr) {
     struct ggml_init_params params0 = {
         /*.mem_size   =*/ ggml_tensor_overhead() * GGML_DEFAULT_GRAPH_SIZE + ggml_graph_overhead(),
         /*.mem_buffer =*/ nullptr,
@@ -912,7 +912,6 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
     struct ggml_context *ctx_cgraph = ggml_init(params0);
     struct ggml_cgraph *gf = build_graph(img.size(), ctx_cgraph, model, params);
 
-    ggml_gallocr_t allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
     ggml_gallocr_alloc_graph(allocr, gf);
 
     struct ggml_tensor *input = ggml_graph_get_tensor(gf, "input");
@@ -1000,8 +999,6 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
 
     // free memory
     ggml_free(ctx_cgraph);
-    ggml_gallocr_free(allocr);
-
 
     return output;
 }
