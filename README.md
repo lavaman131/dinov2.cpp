@@ -283,26 +283,26 @@ First experiments on Intel Core i9-14900HX show inference speedups (up to 3x fas
 You can efficiently run DINOv2 inference on the CPU.
 
 Memory requirements and inference speed on Intel Core i9-14900HX (24 cores, 32 threads) for both native PyTorch and `dinov2.cpp`.
-Using a thread count greater than 10 provides marginal improvements, but 32 threads were used for these runs. The reported results of inference speed correspond to 100 runs
+Using a thread count greater than 10 provides marginal improvements, but 24 threads were used for these runs. The reported results of inference speed correspond to 100 runs
 averages for both PyTorch and `dinov2.cpp`.
 
 #### DINOv2 with Register Tokens
 | Model | Max Mem(PyTorch) |   Max Mem   | Speed(PyTorch) |    Speed    |
 |:-----:|:----------------:|:-----------:|:--------------:|:-----------:|
-| small  |     ~457 MB      | **~110 MB**  |     297 ms     | **97 ms**  |
-| base |     ~720 MB      | **~367 MB**  |     436 ms     | **269 ms**  |
-| large  |     ~1.57 GB     | **~1.2 GB** |    1331 ms     | **802 ms** |
-| giant |     ~4.8 GB     | **~4.4 GB** |    4472 ms     | **2775 ms** |
+| small  |     ~457 MB      | **~109 MB**  |     297 ms     | **96 ms**  |
+| base |     ~720 MB      | **~367 MB**  |     436 ms     | **290 ms**  |
+| large  |     ~1.57 GB     | **~1.2 GB** |    1331 ms     | **868 ms** |
+| giant |     ~4.8 GB     | **~4.4 GB** |    4472 ms     | **2935 ms** |
 
 > **Note:** The models used are of the form `dinov2-with-registers-{size}-imagenet1k-1-layer`
 
 #### DINOv2 without Register Tokens
 | Model | Max Mem(PyTorch) |   Max Mem   | Speed(PyTorch) |    Speed    |
 |:-----:|:----------------:|:-----------:|:--------------:|:-----------:|
-| small  |     ~455 MB      | **~110 MB**  |     181 ms     | **73 ms**  |
-| base |     ~720 MB      | **~365 MB**  |     462 ms     | **242 ms**  |
-| large  |     ~1.55 GB     | **~1.2 GB** |    1288 ms     | **775 ms** |
-| giant |     ~4.8 GB     | **~4.4 GB** |    4384 ms     | **2725 ms** |
+| small  |     ~455 MB      | **~110 MB**  |     181 ms     | **104 ms**  |
+| base |     ~720 MB      | **~365 MB**  |     462 ms     | **292 ms**  |
+| large  |     ~1.55 GB     | **~1.2 GB** |    1288 ms     | **864 ms** |
+| giant |     ~4.8 GB     | **~4.4 GB** |    4384 ms     | **2938 ms** |
 
 > **Note:** The models used are of the form `dinov2-{size}-imagenet1k-1-layer`.
 
@@ -357,31 +357,54 @@ Then you can use `tiny-ggml-model-quant.gguf` just like the model in F16.
 Here are the benchmarks for the different models and quantizations on my machine:
 For accurate estimation of run times, these benchmarks were run 100 times each.
 
-#### DinoV2 With Register Tokens
+#### DINOv2 with Register Tokens
 | Model  | Quantization | Speed (ms) | Mem (MB) |
 | :----: | :----------: | :--------: | :------: |
-| small | q4_0 | 76 | 49 |
-| small | q4_1 | 78 | 51 |
-| small | q5_0 | 87 | 54 |
-| small | q5_1 | 86 | 57 |
-| small | q8_0 | 77 | 70 |
-| base | q4_0 | 174 | 129 |
-| base | q4_1 | 176 | 139 |
-| base | q5_0 | 204 | 149 |
-| base | q5_1 | 204 | 160 |
-| base | q8_0 | 184 | 212 |
-| large | q4_0 | 493 | 371 |
-| large | q4_1 | 494 | 407 |
-| large | q5_0 | 607 | 443 |
-| large | q5_1 | 605 | 480 |
-| large | q8_0 | 515 | 661 |
-| giant | q4_0 | 1544 | 1281 |
-| giant | q4_1 | 1545 | 1417 |
-| giant | q5_0 | 1962 | 1552 |
-| giant | q5_1 | 1951 | 1687 |
-| giant | q8_0 | 1551 | 2364 |
+| with-registers-small | q4_0 | 90 | 49 |
+| with-registers-small | q4_1 | 78 | 51 |
+| with-registers-small | q5_0 | 86 | 54 |
+| with-registers-small | q5_1 | 88 | 57 |
+| with-registers-small | q8_0 | 82 | 70 |
+| with-registers-base | q4_0 | 176 | 129 |
+| with-registers-base | q4_1 | 190 | 139 |
+| with-registers-base | q5_0 | 218 | 150 |
+| with-registers-base | q5_1 | 203 | 160 |
+| with-registers-base | q8_0 | 188 | 212 |
+| with-registers-large | q4_0 | 508 | 371 |
+| with-registers-large | q4_1 | 516 | 407 |
+| with-registers-large | q5_0 | 618 | 443 |
+| with-registers-large | q5_1 | 615 | 480 |
+| with-registers-large | q8_0 | 507 | 661 |
+| with-registers-giant | q4_0 | 1600 | 1281 |
+| with-registers-giant | q4_1 | 1617 | 1417 |
+| with-registers-giant | q5_0 | 2060 | 1552 |
+| with-registers-giant | q5_1 | 2036 | 1688 |
+| with-registers-giant | q8_0 | 1598 | 2364 |
 
+#### DINOv2 without Register Tokens
 
+| Model  | Quantization | Speed (ms) | Mem (MB) |
+| :----: | :----------: | :--------: | :------: |
+| small | q4_0 | 91 | 49 |
+| small | q4_1 | 82 | 51 |
+| small | q5_0 | 83 | 54 |
+| small | q5_1 | 91 | 57 |
+| small | q8_0 | 93 | 70 |
+| base | q4_0 | 179 | 129 |
+| base | q4_1 | 187 | 140 |
+| base | q5_0 | 218 | 150 |
+| base | q5_1 | 207 | 160 |
+| base | q8_0 | 193 | 212 |
+| large | q4_0 | 509 | 371 |
+| large | q4_1 | 503 | 407 |
+| large | q5_0 | 617 | 444 |
+| large | q5_1 | 615 | 480 |
+| large | q8_0 | 527 | 661 |
+| giant | q4_0 | 1586 | 1282 |
+| giant | q4_1 | 1627 | 1417 |
+| giant | q5_0 | 2036 | 1552 |
+| giant | q5_1 | 2075 | 1688 |
+| giant | q8_0 | 1554 | 2365 |
 
 This project was built on and highly inspired by vit.cpp:
 
