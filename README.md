@@ -103,8 +103,7 @@ main: graph computation took 349 ms
 ## Realtime Demo
 
 
-https://github.com/user-attachments/assets/4e058afc-5819-4578-8fb5-74fb93168084
-
+https://github.com/user-attachments/assets/54e5181b-5462-48cc-8f2c-159f9dfb5f58
 
 
 ## Convert PyTorch to GGUF
