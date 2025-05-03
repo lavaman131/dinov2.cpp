@@ -350,7 +350,7 @@ For example, you can run the following to convert the model to q5_1:
 ./bin/quantize ../ggml-model.gguf ../ggml-model-quant.gguf 7
 ```
 
-Then you can use `tiny-ggml-model-quant.gguf` just like the model in F16.
+Then you can use `ggml-model-quant.gguf` just like the model in F16.
 
 ### Results
 
