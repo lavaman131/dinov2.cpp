@@ -360,26 +360,26 @@ For accurate estimation of run times, these benchmarks were run 100 times each.
 #### DINOv2 with Register Tokens
 | Model  | Quantization | Speed (ms) | Mem (MB) |
 | :----: | :----------: | :--------: | :------: |
-| with-registers-small | q4_0 | 90 | 49 |
-| with-registers-small | q4_1 | 78 | 51 |
-| with-registers-small | q5_0 | 86 | 54 |
-| with-registers-small | q5_1 | 88 | 57 |
-| with-registers-small | q8_0 | 82 | 70 |
-| with-registers-base | q4_0 | 176 | 129 |
-| with-registers-base | q4_1 | 190 | 139 |
-| with-registers-base | q5_0 | 218 | 150 |
-| with-registers-base | q5_1 | 203 | 160 |
-| with-registers-base | q8_0 | 188 | 212 |
-| with-registers-large | q4_0 | 508 | 371 |
-| with-registers-large | q4_1 | 516 | 407 |
-| with-registers-large | q5_0 | 618 | 443 |
-| with-registers-large | q5_1 | 615 | 480 |
-| with-registers-large | q8_0 | 507 | 661 |
-| with-registers-giant | q4_0 | 1600 | 1281 |
-| with-registers-giant | q4_1 | 1617 | 1417 |
-| with-registers-giant | q5_0 | 2060 | 1552 |
-| with-registers-giant | q5_1 | 2036 | 1688 |
-| with-registers-giant | q8_0 | 1598 | 2364 |
+| small | q4_0 | 90 | 49 |
+| small | q4_1 | 78 | 51 |
+| small | q5_0 | 86 | 54 |
+| small | q5_1 | 88 | 57 |
+| small | q8_0 | 82 | 70 |
+| base | q4_0 | 176 | 129 |
+| base | q4_1 | 190 | 139 |
+| base | q5_0 | 218 | 150 |
+| base | q5_1 | 203 | 160 |
+| base | q8_0 | 188 | 212 |
+| large | q4_0 | 508 | 371 |
+| large | q4_1 | 516 | 407 |
+| large | q5_0 | 618 | 443 |
+| large | q5_1 | 615 | 480 |
+| large | q8_0 | 507 | 661 |
+| giant | q4_0 | 1600 | 1281 |
+| giant | q4_1 | 1617 | 1417 |
+| giant | q5_0 | 2060 | 1552 |
+| giant | q5_1 | 2036 | 1688 |
+| giant | q8_0 | 1598 | 2364 |
 
 #### DINOv2 without Register Tokens
 
