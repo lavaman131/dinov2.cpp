@@ -81,31 +81,40 @@ int main(int argc, char **argv) {
         ggml_backend_buffer_free(model.buffer);
         ggml_backend_free(model.backend);
 
-
         if (!params.classify) {
-            const cv::Mat &patch_tokens = output->patch_tokens.value();
-            cv::PCA pca(patch_tokens, cv::Mat(), cv::PCA::DATA_AS_ROW, 3);
-
-            // project original features into the new 3‑D PCA space
-            cv::Mat projected;
-            pca.project(patch_tokens, projected);
-            // projected: total_pixels×3, CV_32F
-
-            cv::Mat projected_norm;
-            cv::normalize(projected, projected_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
-
-            cv::Mat image = projected_norm.reshape(3, img.rows / model.hparams.patch_size);
-
-            cv::Mat resized_image;
-            cv::resize(image, resized_image, original_size, 0, 0, cv::INTER_NEAREST);
-
             const std::string filename = params.image_out;
-            if (cv::imwrite(filename, resized_image)) {
+            if (cv::imwrite(filename, output->pca_feats.value())) {
                 fprintf(stderr, "%s: Saved image to: %s\n", __func__, filename.c_str());
             } else {
                 fprintf(stderr, "%s: failed to save image to '%s'\n", __func__, filename.c_str());
             }
         }
+
+
+        // if (!params.classify) {
+        //     const cv::Mat &patch_tokens = output->patch_tokens.value();
+        //     cv::PCA pca(patch_tokens, cv::Mat(), cv::PCA::DATA_AS_ROW, 3);
+        //
+        //     // project original features into the new 3‑D PCA space
+        //     cv::Mat projected;
+        //     pca.project(patch_tokens, projected);
+        //     // projected: total_pixels×3, CV_32F
+        //
+        //     cv::Mat projected_norm;
+        //     cv::normalize(projected, projected_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
+        //
+        //     cv::Mat image = projected_norm.reshape(3, img.rows / model.hparams.patch_size);
+        //
+        //     cv::Mat resized_image;
+        //     cv::resize(image, resized_image, original_size, 0, 0, cv::INTER_NEAREST);
+        //
+        //     const std::string filename = params.image_out;
+        //     if (cv::imwrite(filename, resized_image)) {
+        //         fprintf(stderr, "%s: Saved image to: %s\n", __func__, filename.c_str());
+        //     } else {
+        //         fprintf(stderr, "%s: failed to save image to '%s'\n", __func__, filename.c_str());
+        //     }
+        // }
     }
 
 

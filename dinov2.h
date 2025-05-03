@@ -84,7 +84,7 @@ void forward_head(cv::Size img_size, struct ggml_cgraph *graph, struct ggml_cont
 
 struct dino_output {
     std::optional<std::vector<uint32_t> > preds;
-    std::optional<cv::Mat> patch_tokens;
+    std::optional<cv::Mat> pca_feats;
 };
 
 void print_t_f32(const char *title, const struct ggml_tensor *t, int n);

@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <iostream>
 
+#include "pca.hpp"
 #include "ggml/src/ggml-impl.h"
 
 #ifdef GGML_USE_CUDA
@@ -35,6 +36,8 @@
 #if defined(_MSC_VER)
 #pragma warning(disable : 4244 4267) // possible loss of data
 #endif
+
+using namespace PCA;
 
 uint32_t dino_hparams::n_enc_head_dim() const {
     return hidden_size / num_attention_heads;
@@ -789,6 +792,10 @@ void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
                                                     cur->nb[3],
                                                     offset);
 
+    if (!params.classify) {
+        patch_tokens = ggml_cont(ctx_cgraph, ggml_transpose(ctx_cgraph, patch_tokens));
+    }
+
     ggml_set_output(patch_tokens);
     ggml_set_name(patch_tokens, "patch_tokens");
     ggml_build_forward_expand(graph, patch_tokens);
@@ -983,17 +990,11 @@ std::unique_ptr<dino_output> dino_predict(const dino_model &model, const cv::Mat
         output->preds = preds;
     } else {
         struct ggml_tensor *patches = ggml_graph_get_tensor(gf, "patch_tokens");
-        const float *patch_tokens_data = ggml_get_data_f32(patches);
-        const int h0 = img.rows / model.hparams.patch_size;
-        const int w0 = img.cols / model.hparams.patch_size;
-        const int num_patches = h0 * w0;
-        // Allocate cv::Mat (which allocates and owns memory)
-        cv::Mat patch_tokens(num_patches, model.hparams.hidden_size, CV_32F);
-        // Copy data from ggml tensor into cv::Mat
-        std::memcpy(patch_tokens.data, patch_tokens_data, num_patches * model.hparams.hidden_size * sizeof(float));
+        pca_params params_pca;
+        params_pca.n_threads = params.n_threads;
+        params_pca.n_components = 1;
 
-        // Store in your output struct
-        output->patch_tokens = patch_tokens;
+        output->pca_feats = run_pca(params_pca, model.hparams, patches, img.size());
     }
 
 
