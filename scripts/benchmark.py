@@ -11,12 +11,26 @@ import torch.nn as nn
 import logging
 import resource  # Import resource for CPU memory measurement
 import sys  # Added for platform check
+import argparse
 
 logging.getLogger().setLevel(logging.INFO)
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
 IMAGENET_DEFAULT_MEAN: Final[Sequence[float]] = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD: Final[Sequence[float]] = (0.229, 0.224, 0.225)
+
+
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Benchmarking script for DINOv2 models.")
+    parser.add_argument("-t", "--threads", type=int, default=1,
+                        help="Number of threads to use.")
+    parser.add_argument("-i", "--inp", type=str, default="./assets/tench.jpg",
+                        help="Path to the input image.")
+    parser.add_argument("--device", type=str, default="cpu",
+                        help="Device to use for benchmarking. Options: 'cpu', 'cuda', 'mps'.")
+    parser.add_argument("-n", type=int, default=100,
+                        help="Number of iterations to run for benchmarking.")
+    return parser.parse_args()
 
 
 def make_normalize_transform(
@@ -68,17 +82,16 @@ def benchmark_model(
 ) -> Tuple[float, float]:
     times = []
     peak_memory_mb = 0.0  # Initialize peak memory
+    attn_impl = "sdpa"
 
     # Reset peak memory stats before the main loop if using CUDA
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
 
-    # start_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss # No longer need start_rss for delta
-
     for _ in range(n):
         sync(device)
         start_time = time.perf_counter_ns()
-        config = AutoConfig.from_pretrained(model_name, attn_implementation="sdpa")
+        config = AutoConfig.from_pretrained(model_name, attn_implementation=attn_impl)
         model = AutoModelForImageClassification.from_pretrained(
             model_name, device_map=device, config=config
         )
@@ -123,6 +136,11 @@ def benchmark_model(
 
 
 def main() -> None:
+    args = get_args()
+    print(f"Using {args.threads} threads to benchmark.")
+    os.environ["OMP_NUM_THREADS"] = str(args.threads)
+    torch.set_num_threads(args.threads)
+
     # model variants
     model_variants = {
         "small": "facebook/dinov2-small-imagenet1k-1-layer",
@@ -132,23 +150,19 @@ def main() -> None:
     }
 
     # an image
-    image_path = "./assets/tench.jpg"
-    device = torch.device("cpu")  # Keep CPU for now as in original code
-    n = 100  # Number of timed iterations (excluding warm-up)
+    image_path = args.inp
+    device = torch.device(args.device)
+    n = args.n
 
     print(f"Benchmarking on device: {device}")
     print(f"Number of timed iterations: {n}")
     print("| Model Variant | Avg Speed (ms) | Peak RSS (MB)    |")  # Updated header
     print("|---------------|----------------|------------------|")
-    for name, model_name in model_variants.items():
-        avg_time, peak_memory = benchmark_model(image_path, model_name, n, device)
-        print(f"| {name:<13} | {avg_time:>14.2f} | {peak_memory:>16.2f} |")
+    with threadpool_limits(limits=args.threads):
+        for name, model_name in model_variants.items():
+            avg_time, peak_memory = benchmark_model(image_path, model_name, n, device)
+            print(f"| {name:<13} | {avg_time:>14.2f} | {peak_memory:>16.2f} |")
 
 
 if __name__ == "__main__":
-    # control number of threads for fair comparison, default is 1 => total threads = num_cores * num_threads_per_core
-    num_threads_per_core = 1
-    os.environ["OMP_NUM_THREADS"] = str(num_threads_per_core)
-    torch.set_num_threads(num_threads_per_core)
-    print(f"Total threads: {(os.cpu_count() or 1) * torch.get_num_threads()}")
     main()

@@ -15,6 +15,7 @@ dependencies = [
     "torchvision",
     "Pillow",
     "transformers[torch]",
+    "hf_transfer",
     "memory-profiler",
     "threadpoolctl",
     "gguf",

@@ -57,7 +57,7 @@ declare -A speed_results
 declare -A memory_results
 
 # defaults
-num_threads=14      # number of threads to use
+num_threads=12      # number of threads to use
 quantize_flag=0    # 0 for no quantization, 1 for quantization
 N=100              # number of times to run each model
 
