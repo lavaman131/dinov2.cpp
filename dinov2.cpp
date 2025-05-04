@@ -566,9 +566,6 @@ struct ggml_tensor *mlp(struct ggml_tensor *cur, const int il, struct ggml_conte
     // GELU activation
     cur = ggml_gelu(ctx_cgraph, cur);
 
-    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-    //         << std::endl;
-
     // projection
     cur = ggml_mul_mat(ctx_cgraph, model.tensors.at(base_layer_name + ".mlp.fc2.weight"),
                        cur);
@@ -588,9 +585,6 @@ struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggm
     cur = ggml_add_inplace(ctx_cgraph, cur,
                            model.tensors.at(base_layer_name + ".mlp.weights_in.bias"));
 
-    // std::cout << "cur shape " << cur->ne[0] << ", " << cur->ne[1] << ", " << cur->ne[2] << ", " << cur->ne[3]
-    //         << std::endl;
-
     int64_t ne0 = cur->ne[0] / 2;
     int64_t ne1 = cur->ne[1];
     int64_t ne2 = cur->ne[2];
@@ -608,7 +602,7 @@ struct ggml_tensor *swiglu_ffn(struct ggml_tensor *cur, const int il, struct ggm
                                             nb1, nb2, nb3, offset);
 
     // SILU activation
-    cur = ggml_mul_inplace(ctx_cgraph, ggml_silu(ctx_cgraph, ggml_cont(ctx_cgraph, cur1)), cur2);
+    cur = ggml_mul_inplace(ctx_cgraph, ggml_silu_inplace(ctx_cgraph, ggml_cont(ctx_cgraph, cur1)), cur2);
 
     // projection
     cur = ggml_mul_mat(
@@ -690,6 +684,7 @@ void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
                                                   1), patch_tokens, 1);
     }
 
+
     struct ggml_tensor *inpL = cur;
     //
     // loop over layers
@@ -750,7 +745,7 @@ void forward_features(const cv::Size img_size, struct ggml_cgraph *graph, struct
                                    model.tensors.
                                    at("encoder.layer." + std::to_string(il) + ".layer_scale2.lambda1"));
         }
-        //
+
         inpL = ggml_add_inplace(ctx_cgraph, cur, inpFF);
     }
 

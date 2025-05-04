@@ -4,23 +4,14 @@
 #include "ggml.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <opencv2/highgui.hpp>
 #include "ggml-alloc.h"
 #include "ggml/examples/stb_image.h" // stb image load
-
 #include <cassert>
-#include <cmath>
 #include <cstddef>
 #include <cstdio>
-#include <cstring>
 #include <fstream>
 #include <map>
 #include <string>
-#include <vector>
-#include <thread>
-#include <cinttypes>
-#include <algorithm>
-#include <iostream>
 #include <opencv2/imgproc.hpp>
 
 #include "ggml-backend.h"

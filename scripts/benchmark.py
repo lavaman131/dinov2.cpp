@@ -28,7 +28,7 @@ def get_args() -> argparse.Namespace:
                         help="Path to the input image.")
     parser.add_argument("--device", type=str, default="cpu",
                         help="Device to use for benchmarking. Options: 'cpu', 'cuda', 'mps'.")
-    parser.add_argument("-n", type=int, default=100,
+    parser.add_argument("-n", type=int, default=10,
                         help="Number of iterations to run for benchmarking.")
     return parser.parse_args()
 
