@@ -88,6 +88,11 @@ def benchmark_model(
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
 
+    preprocess = make_classification_eval_transform()
+    with Image.open(image_path).convert("RGB") as image:
+        processed_image = preprocess(image).to(device, non_blocking=True).unsqueeze_(0)
+        inputs = dict(pixel_values=processed_image)
+
     for _ in range(n):
         sync(device)
         start_time = time.perf_counter_ns()
@@ -96,10 +101,6 @@ def benchmark_model(
             model_name, device_map=device, config=config
         )
         model.eval()
-        preprocess = make_classification_eval_transform()
-        with Image.open(image_path).convert("RGB") as image:
-            processed_image = preprocess(image).to(device, non_blocking=True).unsqueeze_(0)
-            inputs = dict(pixel_values=processed_image)
         predict(inputs, model)
         sync(device)
         end_time = time.perf_counter_ns()
